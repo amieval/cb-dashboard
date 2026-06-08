@@ -17,7 +17,7 @@ defmodule CBDashboard.DagLive do
     end
 
     collections = Collections.available()
-    namespace = pick_namespace(params["c"], collections)
+    namespace = pick_namespace(params["namespace"] || params["c"], collections)
 
     socket =
       socket
@@ -35,7 +35,7 @@ defmodule CBDashboard.DagLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    socket = maybe_switch_collection(socket, params["c"])
+    socket = maybe_switch_collection(socket, params["namespace"] || params["c"])
 
     socket =
       case params["id"] do
@@ -134,12 +134,13 @@ defmodule CBDashboard.DagLive do
 
   # --- Private: collection loading ---
 
-  # Choose the namespace to show: a valid requested one, else `cb`, else the
-  # first available, else `nil` (single-graph fallback).
+  # Choose the namespace to show: "all" (global union) or a valid requested one,
+  # else `cb`, else the first available, else `nil` (single-graph fallback).
   defp pick_namespace(requested, collections) do
     names = Enum.map(collections, & &1.namespace)
 
     cond do
+      requested == "all" and names != [] -> "all"
       requested in names -> requested
       "cb" in names -> "cb"
       names != [] -> hd(names)
@@ -147,13 +148,13 @@ defmodule CBDashboard.DagLive do
     end
   end
 
-  # Switch to a different (valid) collection on `?c=` change; resets selection.
+  # Switch to a different (valid) namespace on route change; resets selection.
   defp maybe_switch_collection(socket, nil), do: socket
 
   defp maybe_switch_collection(socket, ns) do
     names = Enum.map(socket.assigns.collections, & &1.namespace)
 
-    if ns in names and ns != socket.assigns.collection do
+    if valid_namespace?(ns, names) and ns != socket.assigns.collection do
       socket
       |> assign(:selected, nil)
       |> assign(:selected_deps, [])
@@ -163,6 +164,9 @@ defmodule CBDashboard.DagLive do
       socket
     end
   end
+
+  defp valid_namespace?("all", names), do: names != []
+  defp valid_namespace?(ns, names), do: ns in names
 
   # Load `namespace`'s beliefs, recompute the index/stats/kinds, and (when
   # connected) re-push the filtered graph. Leaves filters/search/selection alone.
@@ -175,6 +179,7 @@ defmodule CBDashboard.DagLive do
     |> assign(:index, Graph.index(beliefs))
     |> assign(:stats, Graph.stats(beliefs))
     |> assign(:available_kinds, compute_kinds(beliefs))
+    |> assign(:context_count, Enum.count(beliefs, &context?(&1, namespace)))
     |> maybe_push_graph()
   end
 
@@ -189,9 +194,17 @@ defmodule CBDashboard.DagLive do
     end
   end
 
-  # A namespace resolves to its dependency-closure union; nil (no registry) or a
-  # resolution error falls back to the single graph at CB.Config.beliefs_path/0.
+  # A namespace resolves to its dependency-closure union; "all" is the global
+  # union across every collection; nil (no registry) or a resolution error falls
+  # back to the single graph at CB.Config.beliefs_path/0.
   defp load_beliefs(nil), do: single_graph()
+
+  defp load_beliefs("all") do
+    case Collections.load_all() do
+      {:ok, all} -> all
+      {:error, _} -> single_graph()
+    end
+  end
 
   defp load_beliefs(namespace) do
     case Collections.load_union(namespace) do
@@ -199,6 +212,23 @@ defmodule CBDashboard.DagLive do
       {:error, _} -> single_graph()
     end
   end
+
+  # The namespace a belief belongs to (its id prefix, e.g. "cb" for "cb:a098").
+  defp namespace_of(%{id: id}) when is_binary(id) do
+    case String.split(id, ":", parts: 2) do
+      [ns, _rest] -> ns
+      _ -> nil
+    end
+  end
+
+  defp namespace_of(_), do: nil
+
+  # A belief is "context" when it comes from a dependency namespace rather than
+  # the collection being viewed. In single-graph (nil) and "all" modes nothing is
+  # context — every belief is a first-class member of the view.
+  defp context?(_belief, nil), do: false
+  defp context?(_belief, "all"), do: false
+  defp context?(belief, active), do: namespace_of(belief) != active
 
   defp single_graph do
     case Store.read() do
@@ -232,7 +262,7 @@ defmodule CBDashboard.DagLive do
     end
   end
 
-  defp dag_path(ns), do: "/dag?c=#{ns}"
+  defp dag_path(ns), do: "/c/#{ns}/dag"
 
   defp select_node(socket, assertion) do
     deps = Graph.resolve_deps(assertion, socket.assigns.index)
@@ -297,6 +327,8 @@ defmodule CBDashboard.DagLive do
   end
 
   defp push_graph_data(socket, assertions) do
+    active = socket.assigns.collection
+
     nodes =
       Enum.map(assertions, fn a ->
         %{
@@ -304,6 +336,7 @@ defmodule CBDashboard.DagLive do
           type: a.type,
           kind: a.kind,
           contract: Belief.contract?(a),
+          context: context?(a, active),
           claim: a.claim,
           status: a.status,
           deps: a.deps || [],
@@ -337,7 +370,7 @@ defmodule CBDashboard.DagLive do
           <h1 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">DAG Navigator</h1>
           <span style="font-size: 12px; color: var(--text-secondary);">
             <span :if={@collection} style="font-family: ui-monospace, SFMono-Regular, monospace; color: var(--accent-blue);">{@collection}:</span>
-            {@stats.total} beliefs
+            {@stats.total} beliefs<span :if={@context_count > 0} style="color: var(--text-muted);">, {@context_count} context</span>
           </span>
         </div>
 
@@ -350,6 +383,7 @@ defmodule CBDashboard.DagLive do
               aria-label="Select collection"
               style="width: 100%; padding: 5px 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; outline: none; cursor: pointer;"
             >
+              <option value="all" selected={@collection == "all"}>all — every collection (union)</option>
               <option
                 :for={c <- @collections}
                 value={c.namespace}
@@ -359,6 +393,9 @@ defmodule CBDashboard.DagLive do
               </option>
             </select>
           </form>
+          <div :if={@context_count > 0} style="margin-top: 6px; font-size: 10px; color: var(--text-muted);">
+            Dashed nodes are dependency context from other collections.
+          </div>
         </div>
 
         <%!-- Search --%>
@@ -464,6 +501,13 @@ defmodule CBDashboard.DagLive do
             </span>
             <span :if={@selected.kind} style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; background: var(--bg-tertiary); color: var(--text-secondary); margin-left: 4px;">
               <%= @selected.kind %>
+            </span>
+            <span
+              :if={context?(@selected, @collection)}
+              title="From a dependency collection, not the one being viewed"
+              style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; background: var(--bg-tertiary); color: var(--text-muted); margin-left: 4px; font-family: ui-monospace, SFMono-Regular, monospace;"
+            >
+              context · {namespace_of(@selected)}:
             </span>
           </div>
           <button phx-click="deselect" aria-label="Close detail pane" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; line-height: 1;">&times;</button>

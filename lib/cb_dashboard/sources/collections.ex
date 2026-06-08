@@ -60,6 +60,34 @@ defmodule CBDashboard.Sources.Collections do
   end
 
   @doc """
+  Every registered collection's beliefs, concatenated and de-duplicated by id —
+  the global union across all namespaces (the "all" view). Each collection file
+  is read once (not via closures), so there's no cross-namespace overlap to
+  merge; `uniq_by` is just defensive.
+  """
+  @spec load_all() :: {:ok, [CB.Belief.t()]} | {:error, term()}
+  def load_all do
+    case registry() do
+      {:ok, reg} ->
+        beliefs =
+          reg
+          |> Collection.namespaces()
+          |> Enum.flat_map(fn ns ->
+            case Collection.load(ns, reg) do
+              {:ok, bs} -> bs
+              _ -> []
+            end
+          end)
+          |> Enum.uniq_by(& &1.id)
+
+        {:ok, beliefs}
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  @doc """
   Absolute `beliefs.json` paths for every registered collection, for the Watcher
   to fingerprint. `[]` when no registry resolves.
   """

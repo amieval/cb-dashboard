@@ -35,6 +35,11 @@ defmodule CBDashboard.Router do
     live "/dag/proposals", DagProposalsLive, :index
     live "/dag/proposals/:slug", DagProposalLive, :show
     live "/dag/:id", DagLive, :show
+    # Namespaced (collection-scoped) DAG. `:namespace` is a collection name or
+    # the reserved "all" (the global union). Declared after the literal
+    # `/dag/...` routes so those win; `/c/...` can't collide with them.
+    live "/c/:namespace/dag", DagLive, :index
+    live "/c/:namespace/dag/:id", DagLive, :show
     live "/policy", PolicyLive, :index
     live "/transcripts/:session_id", TranscriptLive, :show
   end

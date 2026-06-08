@@ -17,6 +17,14 @@ const STATUS_OPACITY = {
   retracted: 0.25,
 };
 
+// Base (un-highlighted) node opacity. Dependency-context nodes (from a
+// collection other than the one being viewed) are dimmed to half so the active
+// collection's own beliefs read as primary.
+function baseOpacity(d) {
+  const o = STATUS_OPACITY[d.status] || 0.5;
+  return d.context ? o * 0.5 : o;
+}
+
 export const AssertionGraph = {
   mounted() {
     this.nodes = [];
@@ -220,7 +228,8 @@ export const AssertionGraph = {
       .attr("fill", (d) => KIND_COLORS[d.kind] || "#6e7681")
       .attr("stroke", "#0d1117")
       .attr("stroke-width", 1.5)
-      .attr("opacity", (d) => STATUS_OPACITY[d.status] || 0.5)
+      .attr("stroke-dasharray", (d) => (d.context ? "2,2" : null))
+      .attr("opacity", baseOpacity)
       .style("cursor", "pointer")
       .call(this.drag())
       .on("click", (event, d) => {
@@ -248,7 +257,8 @@ export const AssertionGraph = {
     this.nodeElements
       .attr("r", (d) => d.radius)
       .attr("fill", (d) => KIND_COLORS[d.kind] || "#6e7681")
-      .attr("opacity", (d) => STATUS_OPACITY[d.status] || 0.5);
+      .attr("stroke-dasharray", (d) => (d.context ? "2,2" : null))
+      .attr("opacity", baseOpacity);
 
     // Labels (ID text)
     const labelSel = this.labelGroup
@@ -302,7 +312,7 @@ export const AssertionGraph = {
 
     this.nodeElements
       .attr("opacity", (d) => {
-        if (!hasHighlight) return STATUS_OPACITY[d.status] || 0.5;
+        if (!hasHighlight) return baseOpacity(d);
         if (d.id === sel) return 1;
         if (deps.has(d.id) || dependents.has(d.id)) return 0.9;
         return 0.15;
