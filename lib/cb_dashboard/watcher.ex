@@ -106,8 +106,11 @@ defmodule CBDashboard.Watcher do
   end
 
   defp resolve_globs(:assertions) do
-    path = CB.Config.beliefs_path()
-    if File.regular?(path), do: [path], else: []
+    # Fingerprint every registered collection's beliefs.json plus the single
+    # default graph, so an edit to any collection wakes the DAG view.
+    [CB.Config.beliefs_path() | CBDashboard.Sources.Collections.belief_paths()]
+    |> Enum.uniq()
+    |> Enum.filter(&File.regular?/1)
   end
 
   defp resolve_globs(:proposals) do

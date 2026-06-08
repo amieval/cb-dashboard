@@ -6,52 +6,43 @@ defmodule CBDashboard.DagLive do
   alias CB.Belief
   alias CB.Belief.{Store, Graph}
   alias CBDashboard.Components.BeliefContext
+  alias CBDashboard.Sources.Collections
 
   @topic "assertions:changes"
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     if connected?(socket) do
       Phoenix.PubSub.subscribe(CBDashboard.PubSub, @topic)
     end
 
-    assertions = load_data()
-    index = Graph.index(assertions)
-    stats = Graph.stats(assertions)
+    collections = Collections.available()
+    namespace = pick_namespace(params["c"], collections)
 
     socket =
       socket
-      |> assign(:assertions, assertions)
-      |> assign(:index, index)
-      |> assign(:stats, stats)
+      |> assign(:collections, collections)
       |> assign(:selected, nil)
       |> assign(:selected_deps, [])
       |> assign(:selected_dependents, [])
       |> assign(:filters, %{type: nil, kind: nil, contract: nil, status: "active"})
       |> assign(:search, "")
-      |> assign(:available_kinds, compute_kinds(assertions))
       |> assign(:view_mode, :graph)
-
-    socket =
-      if connected?(socket) do
-        filtered = apply_filters(assertions, socket.assigns.filters, "")
-        push_graph_data(socket, filtered)
-      else
-        socket
-      end
+      |> assign_graph(namespace)
 
     {:ok, socket}
   end
 
   @impl true
-  def handle_params(%{"id" => id}, _uri, socket) do
-    case Map.get(socket.assigns.index, id) do
-      nil -> {:noreply, socket}
-      assertion -> {:noreply, select_node(socket, assertion)}
-    end
-  end
+  def handle_params(params, _uri, socket) do
+    socket = maybe_switch_collection(socket, params["c"])
 
-  def handle_params(_params, _uri, socket) do
+    socket =
+      case params["id"] do
+        nil -> socket
+        id -> select_by_id(socket, id)
+      end
+
     {:noreply, socket}
   end
 
@@ -130,30 +121,118 @@ defmodule CBDashboard.DagLive do
     {:noreply, assign(socket, :view_mode, mode)}
   end
 
-  @impl true
-  def handle_info(:assertions_changed, socket) do
-    assertions = load_data()
-    index = Graph.index(assertions)
-    stats = Graph.stats(assertions)
-    filtered = apply_filters(assertions, socket.assigns.filters, socket.assigns.search)
-
-    {:noreply,
-     socket
-     |> assign(:assertions, assertions)
-     |> assign(:index, index)
-     |> assign(:stats, stats)
-     |> assign(:available_kinds, compute_kinds(assertions))
-     |> push_graph_data(filtered)}
+  def handle_event("select_collection", %{"collection" => ns}, socket) do
+    {:noreply, push_patch(socket, to: dag_path(ns))}
   end
 
-  # --- Private ---
+  @impl true
+  def handle_info(:assertions_changed, socket) do
+    # Reload the active collection's union (or the single graph) and re-validate
+    # the open selection against the fresh index.
+    {:noreply, socket |> assign_graph(socket.assigns.collection) |> revalidate_selection()}
+  end
 
-  defp load_data do
+  # --- Private: collection loading ---
+
+  # Choose the namespace to show: a valid requested one, else `cb`, else the
+  # first available, else `nil` (single-graph fallback).
+  defp pick_namespace(requested, collections) do
+    names = Enum.map(collections, & &1.namespace)
+
+    cond do
+      requested in names -> requested
+      "cb" in names -> "cb"
+      names != [] -> hd(names)
+      true -> nil
+    end
+  end
+
+  # Switch to a different (valid) collection on `?c=` change; resets selection.
+  defp maybe_switch_collection(socket, nil), do: socket
+
+  defp maybe_switch_collection(socket, ns) do
+    names = Enum.map(socket.assigns.collections, & &1.namespace)
+
+    if ns in names and ns != socket.assigns.collection do
+      socket
+      |> assign(:selected, nil)
+      |> assign(:selected_deps, [])
+      |> assign(:selected_dependents, [])
+      |> assign_graph(ns)
+    else
+      socket
+    end
+  end
+
+  # Load `namespace`'s beliefs, recompute the index/stats/kinds, and (when
+  # connected) re-push the filtered graph. Leaves filters/search/selection alone.
+  defp assign_graph(socket, namespace) do
+    beliefs = load_beliefs(namespace)
+
+    socket
+    |> assign(:collection, namespace)
+    |> assign(:assertions, beliefs)
+    |> assign(:index, Graph.index(beliefs))
+    |> assign(:stats, Graph.stats(beliefs))
+    |> assign(:available_kinds, compute_kinds(beliefs))
+    |> maybe_push_graph()
+  end
+
+  defp maybe_push_graph(socket) do
+    if connected?(socket) do
+      filtered =
+        apply_filters(socket.assigns.assertions, socket.assigns.filters, socket.assigns.search)
+
+      push_graph_data(socket, filtered)
+    else
+      socket
+    end
+  end
+
+  # A namespace resolves to its dependency-closure union; nil (no registry) or a
+  # resolution error falls back to the single graph at CB.Config.beliefs_path/0.
+  defp load_beliefs(nil), do: single_graph()
+
+  defp load_beliefs(namespace) do
+    case Collections.load_union(namespace) do
+      {:ok, union} -> union
+      {:error, _} -> single_graph()
+    end
+  end
+
+  defp single_graph do
     case Store.read() do
       {:ok, all} -> all
       _ -> []
     end
   end
+
+  defp select_by_id(socket, id) do
+    case Map.get(socket.assigns.index, id) do
+      nil -> socket
+      assertion -> select_node(socket, assertion)
+    end
+  end
+
+  # After a reload the open selection may have changed or vanished; re-select it
+  # to refresh deps/dependents, or clear it if it's gone.
+  defp revalidate_selection(%{assigns: %{selected: nil}} = socket), do: socket
+
+  defp revalidate_selection(%{assigns: %{selected: sel}} = socket) do
+    case Map.get(socket.assigns.index, sel.id) do
+      nil ->
+        socket
+        |> assign(:selected, nil)
+        |> assign(:selected_deps, [])
+        |> assign(:selected_dependents, [])
+        |> push_event("highlight", %{deps: [], dependents: [], selected: nil})
+
+      assertion ->
+        select_node(socket, assertion)
+    end
+  end
+
+  defp dag_path(ns), do: "/dag?c=#{ns}"
 
   defp select_node(socket, assertion) do
     deps = Graph.resolve_deps(assertion, socket.assigns.index)
@@ -193,12 +272,16 @@ defmodule CBDashboard.DagLive do
   defp maybe_filter_contract(items, _), do: items
 
   defp maybe_filter_status(assertions, nil), do: assertions
-  defp maybe_filter_status(assertions, status), do: Enum.filter(assertions, &(&1.status == status))
+
+  defp maybe_filter_status(assertions, status),
+    do: Enum.filter(assertions, &(&1.status == status))
 
   defp maybe_filter_search(items, ""), do: items
   defp maybe_filter_search(items, nil), do: items
+
   defp maybe_filter_search(items, query) do
     q = String.downcase(query)
+
     Enum.filter(items, fn item ->
       (item.id && String.contains?(String.downcase(item.id), q)) ||
         (item.claim && String.contains?(String.downcase(item.claim), q))
@@ -253,8 +336,29 @@ defmodule CBDashboard.DagLive do
         <div style="padding: 16px; border-bottom: 1px solid var(--border);">
           <h1 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">DAG Navigator</h1>
           <span style="font-size: 12px; color: var(--text-secondary);">
+            <span :if={@collection} style="font-family: ui-monospace, SFMono-Regular, monospace; color: var(--accent-blue);">{@collection}:</span>
             {@stats.total} beliefs
           </span>
+        </div>
+
+        <%!-- Collection selector (only when a registry exposes more than one) --%>
+        <div :if={length(@collections) > 1} style="padding: 12px 16px; border-bottom: 1px solid var(--border);">
+          <div style="margin-bottom: 8px;"><.section_label>Collection</.section_label></div>
+          <form phx-change="select_collection">
+            <select
+              name="collection"
+              aria-label="Select collection"
+              style="width: 100%; padding: 5px 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; outline: none; cursor: pointer;"
+            >
+              <option
+                :for={c <- @collections}
+                value={c.namespace}
+                selected={c.namespace == @collection}
+              >
+                {c.namespace}{if c.description, do: " — #{c.description}"}
+              </option>
+            </select>
+          </form>
         </div>
 
         <%!-- Search --%>

@@ -41,6 +41,19 @@ defmodule CBDashboard.Paths do
     Path.expand("~/.claude/projects") |> Path.join(encoded)
   end
 
+  @doc """
+  Path to the belief-collections registry (`collections.json`): `namespace ->
+  beliefs.json`. Config `:cb_dashboard, :collections_registry`, else
+  `CB_COLLECTIONS`, else the `cb` framework's default
+  (`CB.Collection.default_registry_path/0`). When the file is absent the DAG view
+  falls back to the single graph at `CB.Config.beliefs_path/0`.
+  """
+  def collections_registry do
+    Application.get_env(:cb_dashboard, :collections_registry) ||
+      System.get_env("CB_COLLECTIONS") ||
+      CB.Collection.default_registry_path()
+  end
+
   def plans_dir, do: Path.join(data_root(), "ops/plans")
   def positions_dir, do: Path.join(data_root(), "ops/position")
   def runs_dir, do: Path.join(data_root(), "org/agents/runs")
