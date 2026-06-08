@@ -131,6 +131,7 @@ defmodule CBDashboard.Sources.Transcripts do
     |> Path.wildcard()
     |> Enum.map(fn p ->
       sid = Path.basename(p, ".jsonl")
+
       mtime =
         case File.stat(p, time: :posix) do
           {:ok, %{mtime: m}} -> m

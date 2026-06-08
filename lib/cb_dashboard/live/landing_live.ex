@@ -36,7 +36,11 @@ defmodule CBDashboard.LandingLive do
   defp sections do
     [
       %{path: "/plans", title: "Plans", note: "ops/plans — active and shipped (step 3)"},
-      %{path: "/position", title: "Position", note: "ops/position — normative positions, per-claim DAG status"},
+      %{
+        path: "/position",
+        title: "Position",
+        note: "ops/position — normative positions, per-claim DAG status"
+      },
       %{path: "/runs", title: "Agent runs", note: "org/agents/runs (step 4)"},
       %{path: "/dag", title: "Belief DAG", note: "org/assertions (step 5)"},
       %{path: "/policy", title: "Policy", note: "derived from belief tags (step 6)"}

@@ -35,7 +35,10 @@ defmodule CBDashboard.Components.BeliefContext do
     required: true,
     doc: "Belief struct or proposed-payload map. `nil` when belief doesn't exist (new-belief)."
 
-  attr :belief_id, :string, required: true, doc: "Target belief id, used for citers + missing-state."
+  attr :belief_id, :string,
+    required: true,
+    doc: "Target belief id, used for citers + missing-state."
+
   attr :index, :map, required: true, doc: "id => belief map (for dep resolution)."
   attr :all_beliefs, :list, required: true, doc: "Full belief list (for citer lookup)."
 
@@ -421,7 +424,12 @@ defmodule CBDashboard.Components.BeliefContext do
       end
 
     assigns =
-      assign(assigns, stale?: stale?, dropped?: dropped?, added?: added?, border_color: border_color)
+      assign(assigns,
+        stale?: stale?,
+        dropped?: dropped?,
+        added?: added?,
+        border_color: border_color
+      )
 
     ~H"""
     <a
@@ -748,7 +756,10 @@ defmodule CBDashboard.Components.BeliefContext do
   defp format_value(value) when is_binary(value), do: value
   defp format_value(value) when is_number(value), do: to_string(value)
   defp format_value(value) when is_boolean(value), do: to_string(value)
-  defp format_value(value) when is_list(value), do: "[" <> Enum.map_join(value, ", ", &format_value/1) <> "]"
+
+  defp format_value(value) when is_list(value),
+    do: "[" <> Enum.map_join(value, ", ", &format_value/1) <> "]"
+
   defp format_value(value) when is_map(value), do: Jason.encode!(value)
   defp format_value(value), do: inspect(value)
 end

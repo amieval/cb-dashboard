@@ -39,7 +39,8 @@ defmodule CBDashboard.Sources.Plans do
     :has_recap?
   ]
 
-  @type bucket :: :in_progress | :pending | :paused | :shipped | :superseded | :deprecated | :evaluate
+  @type bucket ::
+          :in_progress | :pending | :paused | :shipped | :superseded | :deprecated | :evaluate
 
   @type t :: %__MODULE__{
           basename: String.t(),
@@ -135,7 +136,8 @@ defmodule CBDashboard.Sources.Plans do
         bucket: bucket,
         shipped?: bucket == :shipped,
         date: filename_date(basename),
-        done_date: status_done_date(header) || (bucket == :shipped && filename_date(basename)) || nil,
+        done_date:
+          status_done_date(header) || (bucket == :shipped && filename_date(basename)) || nil,
         mtime: file_mtime(path),
         effort: extract_field(header, "Effort"),
         tag: extract_field(header, "Tag"),
@@ -156,7 +158,10 @@ defmodule CBDashboard.Sources.Plans do
     |> String.trim()
     |> String.trim("`")
     |> String.replace_suffix(".md", "")
-    |> String.replace(~r{^(?:ops/plans/)?(?:done/|paused/|superseded/|deprecated/|evaluate/)?}, "")
+    |> String.replace(
+      ~r{^(?:ops/plans/)?(?:done/|paused/|superseded/|deprecated/|evaluate/)?},
+      ""
+    )
     |> case do
       "" -> nil
       bn -> bn
@@ -265,7 +270,9 @@ defmodule CBDashboard.Sources.Plans do
 
   defp extract_title(header) do
     case Regex.run(~r/^#\s*Plan:\s*(.+?)\s*$/m, header) do
-      [_, title] -> title
+      [_, title] ->
+        title
+
       _ ->
         case Regex.run(~r/^#\s*(.+?)\s*$/m, header) do
           [_, title] -> title

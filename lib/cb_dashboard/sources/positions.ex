@@ -159,7 +159,9 @@ defmodule CBDashboard.Sources.Positions do
 
   defp parse_authored(header) do
     case extract_field(header, "Authored") do
-      nil -> nil
+      nil ->
+        nil
+
       raw ->
         case Regex.run(~r/(\d{4}-\d{2}-\d{2})/, raw) do
           [_, date_str] ->

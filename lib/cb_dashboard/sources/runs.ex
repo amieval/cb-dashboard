@@ -57,7 +57,9 @@ defmodule CBDashboard.Sources.Runs do
 
   # Sort by started timestamp; runs missing one fall back to id (which embeds
   # the date). Tuple comparison keeps undated runs last but stable.
-  defp sort_key(%__MODULE__{started: %DateTime{} = dt}), do: {1, DateTime.to_unix(dt, :microsecond), ""}
+  defp sort_key(%__MODULE__{started: %DateTime{} = dt}),
+    do: {1, DateTime.to_unix(dt, :microsecond), ""}
+
   defp sort_key(%__MODULE__{id: id}), do: {0, 0, id}
 
   @doc "Status counts across the list (totals + each status)."

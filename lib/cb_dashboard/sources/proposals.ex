@@ -510,10 +510,18 @@ defmodule CBDashboard.Sources.Proposals do
       []
       |> require_field(raw, "id", "mutation ##{idx} id missing")
       |> require_field(raw, "type", "mutation #{label(id, idx)} type missing")
-      |> require_enum(type, @mutation_types, "mutation #{label(id, idx)} type #{inspect(type)} not in enum")
+      |> require_enum(
+        type,
+        @mutation_types,
+        "mutation #{label(id, idx)} type #{inspect(type)} not in enum"
+      )
       |> require_field(raw, "belief_id", "mutation #{label(id, idx)} belief_id missing")
       |> require_field(raw, "status", "mutation #{label(id, idx)} status missing")
-      |> require_enum(status, @mutation_statuses, "mutation #{label(id, idx)} status #{inspect(status)} not in enum")
+      |> require_enum(
+        status,
+        @mutation_statuses,
+        "mutation #{label(id, idx)} status #{inspect(status)} not in enum"
+      )
       |> require_field(raw, "rationale", "mutation #{label(id, idx)} rationale missing")
       |> Enum.reject(&is_nil/1)
 
@@ -547,11 +555,18 @@ defmodule CBDashboard.Sources.Proposals do
     belief_id = raw["belief_id"]
 
     errs = []
-    errs = if is_map(after_), do: errs, else: errs ++ ["mutation #{label} new-belief missing after payload"]
+
+    errs =
+      if is_map(after_),
+        do: errs,
+        else: errs ++ ["mutation #{label} new-belief missing after payload"]
 
     errs =
       if is_map(after_) && belief_id && Map.get(after_, "id") != belief_id do
-        errs ++ ["mutation #{label} new-belief: after.id (#{Map.get(after_, "id")}) ≠ belief_id (#{belief_id})"]
+        errs ++
+          [
+            "mutation #{label} new-belief: after.id (#{Map.get(after_, "id")}) ≠ belief_id (#{belief_id})"
+          ]
       else
         errs
       end
@@ -631,7 +646,10 @@ defmodule CBDashboard.Sources.Proposals do
   defp append(list, item), do: list ++ [item]
 
   defp ensure_mutations(errors, nil, _), do: errors
-  defp ensure_mutations(errors, list, []) when is_list(list), do: errors ++ ["mutations array is empty"]
+
+  defp ensure_mutations(errors, list, []) when is_list(list),
+    do: errors ++ ["mutations array is empty"]
+
   defp ensure_mutations(errors, _list, _parsed), do: errors
 
   defp label(nil, idx), do: "##{idx}"

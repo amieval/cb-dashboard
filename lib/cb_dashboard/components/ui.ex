@@ -157,7 +157,10 @@ defmodule CBDashboard.Components.UI do
   `source:` need filesystem viewers SOD doesn't yet have.
   """
   attr :artifact, :string, required: true
-  attr :style, :string, default: "font-size: 12px; color: var(--accent-blue); font-family: ui-monospace, SFMono-Regular, monospace; word-break: break-all;"
+
+  attr :style, :string,
+    default:
+      "font-size: 12px; color: var(--accent-blue); font-family: ui-monospace, SFMono-Regular, monospace; word-break: break-all;"
 
   def artifact_link(%{artifact: nil} = assigns), do: ~H""
   def artifact_link(%{artifact: ""} = assigns), do: ~H""
@@ -262,6 +265,7 @@ defmodule CBDashboard.Components.UI do
   every row after the first.
   """
   attr :variant, :atom, default: :bordered, values: @list_variants
+
   slot :row, required: true do
     attr :id, :string
   end

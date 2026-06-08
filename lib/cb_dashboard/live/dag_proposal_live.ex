@@ -98,8 +98,11 @@ defmodule CBDashboard.DagProposalLive do
       {:ok, %{count: n, commit: commit}} ->
         commit_note =
           case commit do
-            :ok -> "committed"
-            {:error, reason} -> "commit failed (#{inspect(reason)}); files written, commit manually"
+            :ok ->
+              "committed"
+
+            {:error, reason} ->
+              "commit failed (#{inspect(reason)}); files written, commit manually"
           end
 
         {:noreply,

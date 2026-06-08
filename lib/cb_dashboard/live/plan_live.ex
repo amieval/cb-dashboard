@@ -277,7 +277,9 @@ defmodule CBDashboard.PlanLive do
   # `---` separator that conventionally precedes it so the recap tab
   # doesn't lead with a stray horizontal rule.
   defp split_at_recap(markdown) do
-    case Regex.run(~r/\A(.*?)(?:\n---\s*\n+)?(## Recap\b.*)\z/s, markdown, capture: :all_but_first) do
+    case Regex.run(~r/\A(.*?)(?:\n---\s*\n+)?(## Recap\b.*)\z/s, markdown,
+           capture: :all_but_first
+         ) do
       [plan, recap] -> {String.trim_trailing(plan), recap}
       _ -> {markdown, nil}
     end
@@ -786,5 +788,4 @@ defmodule CBDashboard.PlanLive do
   defp state_label(:shipped), do: "Done"
   defp state_label(:in_progress), do: "In-progress"
   defp state_label(b), do: b |> Atom.to_string() |> String.capitalize()
-
 end
