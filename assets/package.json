@@ -1,0 +1,9 @@
+{
+  "name": "cb_dashboard_assets",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Asset bundle for the Composable Beliefs dashboard (D3 belief-graph hook).",
+  "dependencies": {
+    "d3": "^7.9.0"
+  }
+}
