@@ -18,3 +18,6 @@
 # Local screenshots / scratch from verification
 /.verify-*.png
 /.boot-*.png
+
+# ExUnit @tag :tmp_dir scratch
+/tmp/

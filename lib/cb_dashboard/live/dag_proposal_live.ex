@@ -22,7 +22,7 @@ defmodule CBDashboard.DagProposalLive do
 
   import CBDashboard.Components.UI
 
-  alias CB.Belief.{Mutation, Store, Graph}
+  alias CB.Belief.{Store, Graph}
   alias CBDashboard.Components.BeliefContext
   alias CBDashboard.Sources.Proposals
 
@@ -94,21 +94,15 @@ defmodule CBDashboard.DagProposalLive do
   end
 
   def handle_event("apply_approved", _params, socket) do
-    case apply_approved(socket.assigns.slug) do
-      {:ok, %{count: n, commit: commit}} ->
-        commit_note =
-          case commit do
-            :ok ->
-              "committed"
-
-            {:error, reason} ->
-              "commit failed (#{inspect(reason)}); files written, commit manually"
-          end
-
+    case run_apply(socket.assigns.slug) do
+      {:ok, %{count: n, commit: commit, namespace: ns}} ->
         {:noreply,
          socket
          |> assign(:update_error, nil)
-         |> assign(:apply_note, "Applied #{n} mutation#{plural(n)} — #{commit_note}")}
+         |> assign(
+           :apply_note,
+           "Applied #{n} mutation#{plural(n)}#{ns_suffix(ns)} — #{commit_note(commit)}"
+         )}
 
       {:error, :nothing_to_apply} ->
         {:noreply,
@@ -165,77 +159,23 @@ defmodule CBDashboard.DagProposalLive do
 
   # --- Apply-approved pipeline ---
 
-  defp apply_approved(slug) do
+  # Read-only gate lives here; the pipeline itself is CBDashboard.ProposalApply.
+  defp run_apply(slug) do
     if CBDashboard.Paths.mutations_enabled?() do
-      do_apply_approved(slug)
+      CBDashboard.ProposalApply.apply_approved(slug)
     else
       {:error, :mutations_disabled}
     end
   end
 
-  defp do_apply_approved(slug) do
-    with {:ok, manifest} <- Proposals.get(slug),
-         to_apply <- collect_to_apply(manifest.mutations),
-         :ok <- ensure_non_empty(to_apply),
-         {:ok, assertions} <- Store.read(),
-         {:ok, updated} <- run_apply_batch(to_apply, assertions, slug),
-         {:ok, _path} <- Store.write(updated),
-         {:ok, _manifest} <- Proposals.mark_mutations_applied(slug, Enum.map(to_apply, & &1.id)) do
-      {:ok, %{count: length(to_apply), commit: commit_apply(slug, to_apply)}}
-    end
-  end
+  defp commit_note(:ok), do: "committed"
+  defp commit_note(:skipped), do: "files written (commit skipped)"
 
-  defp collect_to_apply(mutations), do: Enum.filter(mutations, &queueable?/1)
+  defp commit_note({:error, reason}),
+    do: "commit failed (#{inspect(reason)}); files written, commit manually"
 
-  defp ensure_non_empty([]), do: {:error, :nothing_to_apply}
-  defp ensure_non_empty(_), do: :ok
-
-  defp run_apply_batch(to_apply, assertions, slug) do
-    case Mutation.apply_batch(to_apply, assertions, slug: slug) do
-      {:ok, _} = ok -> ok
-      {:error, {id, reason}} when is_binary(id) -> {:error, {:apply_failed, {id, reason}}}
-      err -> err
-    end
-  end
-
-  defp commit_apply(slug, mutations) do
-    message = build_commit_message(slug, mutations)
-    root = CBDashboard.Paths.data_root()
-
-    # Stage the two files the apply touched, expressed relative to the git root
-    # (`data_root`): the belief graph (wherever CB.Config points) and the
-    # proposal manifest under the proposals dir.
-    paths = [
-      Path.relative_to(CB.Config.beliefs_path(), root),
-      Path.relative_to(Path.join(CBDashboard.Paths.proposals_dir(), "#{slug}.json"), root)
-    ]
-
-    with :ok <- run_git(["add" | paths]),
-         :ok <- run_git(["commit", "-m", message]) do
-      :ok
-    end
-  end
-
-  defp run_git(args) do
-    case System.cmd("git", args, cd: CBDashboard.Paths.data_root(), stderr_to_stdout: true) do
-      {_out, 0} -> :ok
-      {out, code} -> {:error, {:git_exit, code, String.trim(out)}}
-    end
-  end
-
-  defp build_commit_message(slug, mutations) do
-    n = length(mutations)
-    header = "dag: #{slug} — apply #{n} mutation#{plural(n)}"
-    bullets = mutations |> Enum.map(fn m -> "- #{Mutation.summary(m)}" end) |> Enum.join("\n")
-
-    """
-    #{header}
-
-    #{bullets}
-
-    Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-    """
-  end
+  defp ns_suffix(nil), do: ""
+  defp ns_suffix(ns), do: " to #{ns}:"
 
   defp plural(1), do: ""
   defp plural(_), do: "s"
@@ -249,7 +189,10 @@ defmodule CBDashboard.DagProposalLive do
         |> assign_new(:update_error, fn -> nil end)
 
       {:ok, manifest} ->
-        {:ok, assertions} = Store.read()
+        # Belief context comes from the manifest's target collection (its
+        # dependency-closure union) so cross-namespace deps/citers resolve; a
+        # manifest without a namespace uses the single default graph.
+        assertions = load_context(manifest)
         index = Graph.index(assertions)
 
         socket
@@ -259,22 +202,28 @@ defmodule CBDashboard.DagProposalLive do
         |> assign(:assertions, assertions)
         |> assign(:index, index)
         |> assign(:counts, mutation_counts(manifest.mutations))
-        |> assign(:queued_count, queued_for_apply(manifest.mutations))
+        |> assign(:queued_count, CBDashboard.ProposalApply.queued_count(manifest.mutations))
         |> assign_new(:update_error, fn -> nil end)
         |> assign_new(:apply_note, fn -> nil end)
         |> assign_new(:editing_mutation_id, fn -> nil end)
     end
   end
 
-  defp queued_for_apply(mutations), do: Enum.count(mutations, &queueable?/1)
+  defp load_context(%{namespace: ns}) when is_binary(ns) and ns != "" do
+    case CBDashboard.Sources.Collections.load_union(ns) do
+      {:ok, union} -> union
+      {:error, _} -> single_graph()
+    end
+  end
 
-  # A mutation is "queued for apply" when it's approved (status=applied),
-  # hasn't landed yet (applied_at=nil), and actually changes the DAG
-  # (type ≠ context). Context entries get status=applied to mean "noted"
-  # — they never enter the apply pipeline and don't carry an applied_at.
-  defp queueable?(%{type: "context"}), do: false
-  defp queueable?(%{status: "applied", applied_at: nil}), do: true
-  defp queueable?(_), do: false
+  defp load_context(_manifest), do: single_graph()
+
+  defp single_graph do
+    case Store.read() do
+      {:ok, all} -> all
+      _ -> []
+    end
+  end
 
   # --- Inline-edit helpers (swap-to-alternative affordance) ---
 
@@ -335,6 +284,14 @@ defmodule CBDashboard.DagProposalLive do
       <.page_header title={@manifest.title || @slug}>
         <:meta>
           <.badge tone={tone_for_proposal_status(@manifest.status)} label={@manifest.status} />
+          <%= if @manifest.namespace do %>
+            <a
+              href={"/c/#{@manifest.namespace}/dag"}
+              title="Target collection — apply writes this collection's beliefs.json"
+              style="font-family: ui-monospace, SFMono-Regular, monospace; color: var(--accent-blue);"
+            >{@manifest.namespace}:</a>
+            <span>·</span>
+          <% end %>
           <span>created {date_label(@manifest.created)}</span>
           <%= if @manifest.author do %>
             <span>·</span>
