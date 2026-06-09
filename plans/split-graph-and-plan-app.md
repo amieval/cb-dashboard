@@ -1,7 +1,7 @@
 # Split the Graph Viewer and Planning into Two Apps
 
-**Status:** in progress — Phase 0 done; **start at Phase 1**
-**Repos:** cb-dashboard, plan-app (new, its own repo), cb_ui, composable-beliefs
+**Status:** ready — **start at Phase 1** (no shared kernel; cb-dashboard self-contained)
+**Repos:** cb-dashboard, plan-app (new, its own repo), composable-beliefs
 **Effort:** large
 
 > **Update (2026-06):** `planning-data` was emptied — its plans were homed into
@@ -18,25 +18,26 @@ viewer work, **already shipped — do not redo**).
 
 **Settled decisions:**
 - **plan-app is its own sibling git repo** at `amieval/plan-app` (alongside
-  `cb-dashboard`, `cb_ui`, `composable-beliefs`) — *not* a subdir.
+  `cb-dashboard`, `composable-beliefs`) — *not* a subdir.
 - Proposals stay with the graph viewer (they mutate the graph); transcripts +
   the `Thread` component go to plan-app.
-- `cb_ui` is the shared design system, already extracted.
+- **No shared UI library.** cb-dashboard is distributed standalone, so it must
+  stay self-contained; and look-and-feel may drift between the apps (fine —
+  plan-app is internal, cb-dashboard is for distribution). So each app **owns
+  its own copy** of the UI components + design tokens; SSOT lives in each repo,
+  no UI dependency. (A `cb_ui` shared lib was briefly extracted and then
+  reverted — see below.)
 
-**Phase 0 is DONE** (committed, not pushed):
-- **`cb_ui` repo** created (commit `7e9a002`, its own git repo, **no remote**):
-  `CBUI.Components` (the function components) + `CBUI.Theme` (a `tokens/1`
-  component rendering the `:root` CSS design tokens + base reset). Has its own
-  `mix.exs`, `.formatter.exs`, `.gitignore`.
-- **cb-dashboard repointed** (commit `e101597` on `main`): path-deps
-  `{:cb_ui, path: "../cb_ui"}`; old `lib/cb_dashboard/components/ui.ex` is
-  **deleted**; every call site does `import CBUI.Components`; `layouts.ex`
-  renders `<CBUI.Theme.tokens />`.
-- **`cb-dashboard/lib/cb_dashboard/layouts.ex` STAYED in cb-dashboard** — it
-  holds app chrome (`<html>/<head>`, the `.sod-*` header/nav markup + CSS,
-  thread/belief-card/plan styles). Only the theme *tokens* moved to cb_ui. So:
-  you edit `layouts.ex` in cb-dashboard (Phase 3), and you author a *fresh*
-  layout for plan-app that also renders `<CBUI.Theme.tokens />`.
+**Phase 0 is moot** (the shared-kernel approach was reverted):
+- A `cb_ui` library was extracted, then removed. cb-dashboard is back to
+  **self-contained**: `CBDashboard.Components.UI` holds the function components,
+  and the `:root` design tokens + base reset are **inlined in
+  `CBDashboard.Layouts`** (the root layout). cb-dashboard's only path-dep is
+  `{:cb, path: "../composable-beliefs"}` (the belief layer). Net state committed
+  on `main` (`94568f0`).
+- **For plan-app (Phase 1):** *copy* `CBDashboard.Components.UI` (rename module
+  to e.g. `PlanApp.Components.UI`) and the `:root` tokens block into plan-app's
+  own root layout. Do not depend on cb-dashboard. The two copies may diverge.
 
 **Repo conventions (both apps must satisfy):**
 - `mix compile --warnings-as-errors` clean, `mix test` green,
@@ -44,8 +45,8 @@ viewer work, **already shipped — do not redo**).
   (`live "..."`, `attr :x, :map`), so each Mix project needs a `.formatter.exs`
   with `import_deps: [:phoenix, :phoenix_live_view]` (note: `:phoenix_live_view`
   alone re-parenthesizes `attr`/`slot` — you need `:phoenix` too).
-- plan-app path-deps **both** `{:cb_ui, path: "../cb_ui"}` and
-  `{:cb, path: "../composable-beliefs"}`.
+- plan-app path-deps `{:cb, path: "../composable-beliefs"}` only (the belief
+  layer, for read-only graph/proposal context). **No UI dependency.**
 
 **Guardrails:**
 - **Phase-gate hard.** After each phase: `mix compile --warnings-as-errors` +
@@ -55,8 +56,8 @@ viewer work, **already shipped — do not redo**).
   links** via `graph_viewer_url` (plan-app → viewer); belief IDs stay namespaced
   (`cb:a098`).
 - **Remotes / push:** cb-dashboard, composable-beliefs, belief-collections have
-  `amieval/*` GitHub remotes; **cb_ui and plan-app do not.** Do **NOT push** any
-  repo — the user controls pushes and remote creation.
+  `amieval/*` GitHub remotes; **plan-app does not** (new repo). Do **NOT push**
+  any repo — the user controls pushes and remote creation.
 - **Commits:** end each with
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
 - **Concurrency:** a separate thread may run the residue scrub on cb-dashboard
@@ -74,9 +75,9 @@ predates Phase 0, which deleted `ui.ex`). The **current** `louder`/`SOD`/
 - **cb-dashboard:** `lib/cb_dashboard/paths.ex`, `error_html.ex`, `layouts.ex`
   (incl. `.sod-header` / `.sod-nav` / `.sod-main` — these are **live CSS class
   names**, so renaming them is real code, not a comment edit),
-  `components/thread.ex`, `sources/transcripts.ex`, `live/policy_live.ex`,
-  `live/landing_live.ex`, `config/dev.exs`.
-- **cb_ui:** `lib/cb_ui/components.ex` (a `SOD` ref carried over from old `ui.ex`).
+  `components/thread.ex`, `components/ui.ex` (a `SOD` ref),
+  `sources/transcripts.ex`, `live/policy_live.ex`, `live/landing_live.ex`,
+  `config/dev.exs`.
 
 `cb-dashboard` today bundles two unrelated activities behind one endpoint:
 **viewing/mutating a Composable Beliefs graph** (`/dag`, proposals, policy) and
@@ -142,13 +143,13 @@ Four cross-references currently bind the halves; each needs an explicit seam:
      viewer. Belief IDs are namespaced (`cb:a098`, `lib:a001`), so links stay
      unambiguous across collections.
 
-3. **`Components.UI` is the shared design system** (~320 lines of function
-   components + the CSS-variable theme + layouts), imported by nearly every
-   LiveView in both halves.
-   - *Resolution (recommended):* extract it to a small shared library `cb_ui`
-     (path dep), so the theme and primitives don't drift between two apps.
-     *Lightweight fallback:* copy `UI` + layouts into each app and accept drift —
-     acceptable only if `cb_ui` proves over-engineered for two consumers.
+3. **`Components.UI` is the design system** (~320 lines of function components),
+   plus the `:root` CSS tokens inlined in `CBDashboard.Layouts`, imported by
+   nearly every LiveView.
+   - *Resolution (decided):* **copy** `CBDashboard.Components.UI` (rename to
+     `PlanApp.Components.UI`) and the `:root` tokens block into plan-app. **No
+     shared library** — cb-dashboard distributes standalone, and drift between
+     the apps is acceptable (internal vs distributed). SSOT lives in each repo.
 
 4. **`Thread` + `Transcripts`** are used by `PlanLive` and `PositionLive` and by
    the standalone `/transcripts` route — all planning. They move wholesale to
@@ -172,16 +173,16 @@ viewer is meant to be pointed at *any* CB graph independent of planning data.
 
 ## Phasing
 
-- **Phase 0 — shared kernel.** ✅ **Done** (`cb_ui` `7e9a002`, cb-dashboard
-  `e101597`). Extracted `cb_ui` (components + theme **tokens**; layouts stayed in
-  cb-dashboard) as a path-dep library; repointed cb-dashboard, behavior
-  unchanged. See the Execution brief above for exact state.
+- **Phase 0 — ~~shared kernel~~ (dropped).** A `cb_ui` shared library was
+  extracted then reverted: no shared UI dep. cb-dashboard is self-contained
+  (`94568f0`). The UI is **copied**, not shared — see the Execution brief.
 - **Phase 1 — scaffold plan-app.** New Phoenix app **in its own sibling repo
-  `amieval/plan-app`** (`git init`, like `cb_ui` — no remote): endpoint, router,
+  `amieval/plan-app`** (`git init`, no remote): endpoint, router,
   application/supervisor, esbuild pipeline, its own `.formatter.exs` +
-  `config/test.exs`, depending on `{:cb_ui, path: "../cb_ui"}` and
-  `{:cb, path: "../composable-beliefs"}`. Its layout renders
-  `<CBUI.Theme.tokens />`. Boots empty on its own port (pick one ≠ 4001, e.g.
+  `config/test.exs`, depending on `{:cb, path: "../composable-beliefs"}` only.
+  **Copy** `CBDashboard.Components.UI` → `PlanApp.Components.UI` and the `:root`
+  tokens block into plan-app's own root layout. Boots empty on its own port
+  (pick one ≠ 4001, e.g.
   4002). Settle the `graph_viewer_url` config shape here.
 - **Phase 2 — move planning surfaces, federated from the start.** Relocate
   `Positions`/`Runs`/`Transcripts` sources, their LiveViews, and `Thread` into
@@ -209,11 +210,9 @@ viewer is meant to be pointed at *any* CB graph independent of planning data.
 ## Open questions
 
 - **Where does plan-app live?** ✅ **Resolved:** its own sibling repo
-  `amieval/plan-app` (alongside `cb-dashboard`/`cb_ui`), per "the tool is not the
-  data."
-- **`cb_ui` granularity.** ✅ **Resolved (Phase 0):** components + theme tokens
-  only; app chrome/layouts stayed in cb-dashboard. Promote more only if
-  duplication bites.
+  `amieval/plan-app` (alongside `cb-dashboard`), per "the tool is not the data."
+- **Shared UI library?** ✅ **Resolved: no.** cb-dashboard stays self-contained
+  for distribution; each app copies the UI and may drift.
 - **Proposal `source_plan` back-reference.** Proposals point at a plan basename;
   cross-app this is a link from the viewer *into* plan-app. Decide whether
   the viewer also needs a `plan_app_url` for that reverse link, or whether
