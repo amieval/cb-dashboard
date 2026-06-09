@@ -20,7 +20,7 @@ closure, and renders the union — with a selector to switch between sources.
 
 > This plan lives in `cb-dashboard/plans/` because it is cb-dashboard's own
 > roadmap (home is physical, per [[federated-planning-dashboard]]). It concerns
-> only the viewer half left behind by [[split-graph-and-planning-apps]]; the
+> only the viewer half left behind by [[split-graph-and-plan-app]]; the
 > planning surfaces are out of scope here.
 
 ## Why
