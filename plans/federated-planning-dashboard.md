@@ -1,8 +1,14 @@
 # Federated Planning Dashboard
 
 **Status:** planned
-**Repos:** cb-dashboard, planning-data, composable-beliefs
+**Repos:** cb-dashboard, composable-beliefs
 **Effort:** medium
+
+> **Update (2026-06):** `planning-data` has since been **emptied** — its plans
+> were homed into `composable-beliefs/plans/` and `cb-dashboard/plans/`. The
+> registry below should point at *those* repos (and a future planning-app), not
+> `planning-data`. The cross-repo case this plan solves is now the live
+> situation, not a hypothetical.
 
 Make the dashboard's plans surface **multi-repo**: plans live in the repo they
 relate to, in an agreed header format, and a single planning app discovers and
