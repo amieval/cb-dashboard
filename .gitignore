@@ -21,3 +21,6 @@
 
 # ExUnit @tag :tmp_dir scratch
 /tmp/
+
+# User's local graph sources (copy from config/sources.example.json)
+/config/sources.local.json

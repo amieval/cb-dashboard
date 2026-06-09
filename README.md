@@ -121,11 +121,34 @@ Everything resolves at runtime; nothing is baked in at compile time.
 
 | Surface | Config / env | Default |
 |---|---|---|
-| belief graph | `config :cb, :beliefs_path` / `CB_BELIEFS` | the `cb:` framework's own graph |
+| graph sources (the DAG view) | `config :cb_dashboard, :sources_file` / `CB_DASHBOARD_SOURCES` | `config/sources.local.json` (gitignored) |
 | data root (`ops/*`, `org/*`) | `config :cb_dashboard, :data_root` / `CB_DASHBOARD_DATA_ROOT` | cwd |
 | transcripts dir | `config :cb_dashboard, :transcripts_root` / `CB_DASHBOARD_TRANSCRIPTS_ROOT` | derived from `data_root` (Claude's `~/.claude/projects/<encoded>`) |
 | HTTP port | `CB_DASHBOARD_PORT` | 4001 |
 | write path (proposal apply) | `config :cb_dashboard, :enable_mutations` | `false` (read-only) |
+
+### Graph sources
+
+The DAG view is a general belief-graph viewer — it owns **no path to anyone's
+data**. The graphs it loads come from a user-supplied sources file; until you
+configure one, no graphs load. Copy the committed example to activate:
+
+```sh
+cp config/sources.example.json config/sources.local.json   # then edit the paths
+```
+
+```jsonc
+// config/sources.local.json  (gitignored)
+{
+  "registries": [ "/path/to/belief-collections/collections.json" ],  // namespaced collections (depends_on closures)
+  "graphs":     [ { "label": "my-project", "path": "/path/to/beliefs.json" } ]  // standalone single graphs
+}
+```
+
+Paths may be absolute or relative to the sources file. Each registry namespace
+and each standalone graph becomes a selectable entry in the DAG view's source
+picker (plus an `all` union). Env shortcuts append to the file: `CB_COLLECTIONS`
+adds a registry, `CB_BELIEFS` adds one graph.
 
 The transcripts directory is derived from the data root by default: Claude Code
 stores each project's transcripts under `~/.claude/projects/<encoded>`, where

@@ -24,7 +24,7 @@ defmodule CBDashboard.ProposalApply do
   alias CB.Belief
   alias CB.Belief.{Mutation, Store}
   alias CBDashboard.Paths
-  alias CBDashboard.Sources.{Collections, Proposals}
+  alias CBDashboard.Sources.{Graphs, Proposals}
 
   @doc """
   Apply a slug's approved mutations to its target collection.
@@ -86,7 +86,7 @@ defmodule CBDashboard.ProposalApply do
   # Where this manifest's mutations land. With a namespace, resolve its
   # beliefs.json through the registry; without one, the single default graph.
   defp resolve_target(%{namespace: ns}) when is_binary(ns) and ns != "" do
-    with {:ok, reg} <- Collections.registry(),
+    with {:ok, reg} <- Graphs.registry_for(ns),
          {:ok, path} <- CB.Collection.collection_path(ns, reg) do
       {:ok, %{namespace: ns, beliefs_path: path}}
     else

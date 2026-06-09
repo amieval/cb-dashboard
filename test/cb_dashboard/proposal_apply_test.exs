@@ -8,16 +8,19 @@ defmodule CBDashboard.ProposalApplyTest do
   setup %{tmp_dir: dir} do
     prior = %{
       data_root: Application.get_env(:cb_dashboard, :data_root),
-      registry: Application.get_env(:cb_dashboard, :collections_registry)
+      sources_file: Application.get_env(:cb_dashboard, :sources_file)
     }
 
     on_exit(fn ->
       put_or_delete(:data_root, prior.data_root)
-      put_or_delete(:collections_registry, prior.registry)
+      put_or_delete(:sources_file, prior.sources_file)
     end)
 
     registry_path = Path.join(dir, "collections.json")
     File.write!(registry_path, Jason.encode!(%{"collections" => %{"foo" => "foo/beliefs.json"}}))
+
+    sources_path = Path.join(dir, "sources.json")
+    File.write!(sources_path, Jason.encode!(%{"registries" => [registry_path]}))
 
     foo_dir = Path.join(dir, "foo")
     File.mkdir_p!(foo_dir)
@@ -38,7 +41,7 @@ defmodule CBDashboard.ProposalApplyTest do
     write_manifest(dir, "p1")
 
     Application.put_env(:cb_dashboard, :data_root, dir)
-    Application.put_env(:cb_dashboard, :collections_registry, registry_path)
+    Application.put_env(:cb_dashboard, :sources_file, sources_path)
 
     {:ok, dir: dir, foo_beliefs: Path.join(foo_dir, "beliefs.json")}
   end

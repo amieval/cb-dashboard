@@ -4,9 +4,9 @@ defmodule CBDashboard.DagLive do
   import CBDashboard.Components.UI
 
   alias CB.Belief
-  alias CB.Belief.{Store, Graph}
+  alias CB.Belief.Graph
   alias CBDashboard.Components.BeliefContext
-  alias CBDashboard.Sources.Collections
+  alias CBDashboard.Sources.Graphs
 
   @topic "assertions:changes"
 
@@ -16,8 +16,8 @@ defmodule CBDashboard.DagLive do
       Phoenix.PubSub.subscribe(CBDashboard.PubSub, @topic)
     end
 
-    collections = Collections.available()
-    namespace = pick_namespace(params["namespace"] || params["c"], collections)
+    collections = Graphs.entries()
+    namespace = pick_source(params["namespace"] || params["c"], collections)
 
     socket =
       socket
@@ -132,55 +132,64 @@ defmodule CBDashboard.DagLive do
     {:noreply, socket |> assign_graph(socket.assigns.collection) |> revalidate_selection()}
   end
 
-  # --- Private: collection loading ---
+  # --- Private: source loading ---
 
-  # Choose the namespace to show: "all" (global union) or a valid requested one,
-  # else `cb`, else the first available, else `nil` (single-graph fallback).
-  defp pick_namespace(requested, collections) do
-    names = Enum.map(collections, & &1.namespace)
+  # Choose the source key to show: "all" (global union) or a valid requested
+  # one, else `cb`, else the first available, else `nil` (no sources configured).
+  defp pick_source(requested, sources) do
+    keys = Enum.map(sources, & &1.key)
 
     cond do
-      requested == "all" and names != [] -> "all"
-      requested in names -> requested
-      "cb" in names -> "cb"
-      names != [] -> hd(names)
+      requested == "all" and keys != [] -> "all"
+      requested in keys -> requested
+      "cb" in keys -> "cb"
+      keys != [] -> hd(keys)
       true -> nil
     end
   end
 
-  # Switch to a different (valid) namespace on route change; resets selection.
+  # Switch to a different (valid) source on route change; resets selection.
   defp maybe_switch_collection(socket, nil), do: socket
 
-  defp maybe_switch_collection(socket, ns) do
-    names = Enum.map(socket.assigns.collections, & &1.namespace)
+  defp maybe_switch_collection(socket, key) do
+    keys = Enum.map(socket.assigns.collections, & &1.key)
 
-    if valid_namespace?(ns, names) and ns != socket.assigns.collection do
+    if valid_source?(key, keys) and key != socket.assigns.collection do
       socket
       |> assign(:selected, nil)
       |> assign(:selected_deps, [])
       |> assign(:selected_dependents, [])
-      |> assign_graph(ns)
+      |> assign_graph(key)
     else
       socket
     end
   end
 
-  defp valid_namespace?("all", names), do: names != []
-  defp valid_namespace?(ns, names), do: ns in names
+  defp valid_source?("all", keys), do: keys != []
+  defp valid_source?(key, keys), do: key in keys
 
-  # Load `namespace`'s beliefs, recompute the index/stats/kinds, and (when
+  # Load the source's beliefs, recompute the index/stats/kinds, and (when
   # connected) re-push the filtered graph. Leaves filters/search/selection alone.
-  defp assign_graph(socket, namespace) do
-    beliefs = load_beliefs(namespace)
+  defp assign_graph(socket, key) do
+    beliefs = load_beliefs(key)
+    kind = source_kind(socket.assigns.collections, key)
 
     socket
-    |> assign(:collection, namespace)
+    |> assign(:collection, key)
+    |> assign(:active_kind, kind)
     |> assign(:assertions, beliefs)
     |> assign(:index, Graph.index(beliefs))
     |> assign(:stats, Graph.stats(beliefs))
     |> assign(:available_kinds, compute_kinds(beliefs))
-    |> assign(:context_count, Enum.count(beliefs, &context?(&1, namespace)))
+    |> assign(:context_count, Enum.count(beliefs, &context?(&1, key, kind)))
     |> maybe_push_graph()
+  end
+
+  defp source_kind(sources, key) do
+    case Enum.find(sources, &(&1.key == key)) do
+      %{kind: kind} -> kind
+      _ -> nil
+    end
   end
 
   defp maybe_push_graph(socket) do
@@ -194,22 +203,16 @@ defmodule CBDashboard.DagLive do
     end
   end
 
-  # A namespace resolves to its dependency-closure union; "all" is the global
-  # union across every collection; nil (no registry) or a resolution error falls
-  # back to the single graph at CB.Config.beliefs_path/0.
-  defp load_beliefs(nil), do: single_graph()
+  # A collection key resolves to its dependency-closure union; "all" is the
+  # global union across every source; a standalone graph to that file. No
+  # sources (nil) or a resolution error yields an empty graph — the viewer owns
+  # no default path into anyone's data.
+  defp load_beliefs(nil), do: []
 
-  defp load_beliefs("all") do
-    case Collections.load_all() do
-      {:ok, all} -> all
-      {:error, _} -> single_graph()
-    end
-  end
-
-  defp load_beliefs(namespace) do
-    case Collections.load_union(namespace) do
-      {:ok, union} -> union
-      {:error, _} -> single_graph()
+  defp load_beliefs(key) do
+    case Graphs.load(key) do
+      {:ok, beliefs} -> beliefs
+      {:error, _} -> []
     end
   end
 
@@ -223,19 +226,11 @@ defmodule CBDashboard.DagLive do
 
   defp namespace_of(_), do: nil
 
-  # A belief is "context" when it comes from a dependency namespace rather than
-  # the collection being viewed. In single-graph (nil) and "all" modes nothing is
-  # context — every belief is a first-class member of the view.
-  defp context?(_belief, nil), do: false
-  defp context?(_belief, "all"), do: false
-  defp context?(belief, active), do: namespace_of(belief) != active
-
-  defp single_graph do
-    case Store.read() do
-      {:ok, all} -> all
-      _ -> []
-    end
-  end
+  # A belief is "context" only when viewing a single collection and the belief
+  # comes from a *dependency* namespace. Standalone graphs, the "all" union, and
+  # the no-source state have no context — every belief is a first-class member.
+  defp context?(belief, key, :collection), do: namespace_of(belief) != key
+  defp context?(_belief, _key, _kind), do: false
 
   defp select_by_id(socket, id) do
     case Map.get(socket.assigns.index, id) do
@@ -328,6 +323,7 @@ defmodule CBDashboard.DagLive do
 
   defp push_graph_data(socket, assertions) do
     active = socket.assigns.collection
+    active_kind = socket.assigns.active_kind
 
     nodes =
       Enum.map(assertions, fn a ->
@@ -336,7 +332,7 @@ defmodule CBDashboard.DagLive do
           type: a.type,
           kind: a.kind,
           contract: Belief.contract?(a),
-          context: context?(a, active),
+          context: context?(a, active, active_kind),
           claim: a.claim,
           status: a.status,
           deps: a.deps || [],
@@ -374,22 +370,27 @@ defmodule CBDashboard.DagLive do
           </span>
         </div>
 
-        <%!-- Collection selector (only when a registry exposes more than one) --%>
+        <%!-- No sources configured: the viewer owns no default data path. --%>
+        <div :if={@collections == []} style="padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-muted); line-height: 1.6;">
+          No graph sources configured. Copy <code>config/sources.example.json</code> to <code>config/sources.local.json</code> and point it at your belief graphs, or set <code>CB_COLLECTIONS</code> / <code>CB_BELIEFS</code>.
+        </div>
+
+        <%!-- Source selector (registry collections + standalone graphs). --%>
         <div :if={length(@collections) > 1} style="padding: 12px 16px; border-bottom: 1px solid var(--border);">
-          <div style="margin-bottom: 8px;"><.section_label>Collection</.section_label></div>
+          <div style="margin-bottom: 8px;"><.section_label>Source</.section_label></div>
           <form phx-change="select_collection">
             <select
               name="collection"
-              aria-label="Select collection"
+              aria-label="Select graph source"
               style="width: 100%; padding: 5px 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; outline: none; cursor: pointer;"
             >
-              <option value="all" selected={@collection == "all"}>all — every collection (union)</option>
+              <option value="all" selected={@collection == "all"}>all — every source (union)</option>
               <option
                 :for={c <- @collections}
-                value={c.namespace}
-                selected={c.namespace == @collection}
+                value={c.key}
+                selected={c.key == @collection}
               >
-                {c.namespace}{if c.description, do: " — #{c.description}"}
+                {c.label}{if c.kind == :graph, do: " (graph)"}{if c.description && c.kind == :collection, do: " — #{c.description}"}
               </option>
             </select>
           </form>
@@ -503,7 +504,7 @@ defmodule CBDashboard.DagLive do
               <%= @selected.kind %>
             </span>
             <span
-              :if={context?(@selected, @collection)}
+              :if={context?(@selected, @collection, @active_kind)}
               title="From a dependency collection, not the one being viewed"
               style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; background: var(--bg-tertiary); color: var(--text-muted); margin-left: 4px; font-family: ui-monospace, SFMono-Regular, monospace;"
             >

@@ -210,7 +210,7 @@ defmodule CBDashboard.DagProposalLive do
   end
 
   defp load_context(%{namespace: ns}) when is_binary(ns) and ns != "" do
-    case CBDashboard.Sources.Collections.load_union(ns) do
+    case CBDashboard.Sources.Graphs.load(ns) do
       {:ok, union} -> union
       {:error, _} -> single_graph()
     end

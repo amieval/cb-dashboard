@@ -42,16 +42,20 @@ defmodule CBDashboard.Paths do
   end
 
   @doc """
-  Path to the belief-collections registry (`collections.json`): `namespace ->
-  beliefs.json`. Config `:cb_dashboard, :collections_registry`, else
-  `CB_COLLECTIONS`, else the `cb` framework's default
-  (`CB.Collection.default_registry_path/0`). When the file is absent the DAG view
-  falls back to the single graph at `CB.Config.beliefs_path/0`.
+  Path to the user's graph **sources file** — the registries and standalone
+  belief graphs the dashboard should load (see `CBDashboard.Sources.Graphs`).
+  Config `:cb_dashboard, :sources_file`, else `CB_DASHBOARD_SOURCES`, else the
+  repo-local `config/sources.local.json` (gitignored).
+
+  The viewer ships with **no default path into anyone's data**: if this file is
+  absent and no `CB_COLLECTIONS`/`CB_BELIEFS` env override is set, no graphs
+  load until the user adds a source. `config/sources.example.json` documents the
+  format.
   """
-  def collections_registry do
-    Application.get_env(:cb_dashboard, :collections_registry) ||
-      System.get_env("CB_COLLECTIONS") ||
-      CB.Collection.default_registry_path()
+  def sources_file do
+    Application.get_env(:cb_dashboard, :sources_file) ||
+      System.get_env("CB_DASHBOARD_SOURCES") ||
+      Path.expand("../../config/sources.local.json", __DIR__)
   end
 
   def plans_dir, do: Path.join(data_root(), "ops/plans")

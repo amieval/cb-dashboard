@@ -14,7 +14,7 @@ defmodule CBDashboard.Watcher do
   | `"plans:changes"`      | `:plans_changed`       | `Paths.plans_dir/*.md`                   |
   | `"positions:changes"`  | `:positions_changed`   | `Paths.positions_dir/*.md`               |
   | `"runs:changes"`       | `:runs_changed`        | `Paths.runs_dir/*.json`                  |
-  | `"assertions:changes"` | `:assertions_changed`  | `CB.Config.beliefs_path()`               |
+  | `"assertions:changes"` | `:assertions_changed`  | every graph in `Sources.Graphs.belief_paths/0` |
   | `"proposals:changes"`  | `:proposals_changed`   | `Paths.proposals_dir/*.json`             |
 
   Decoupled from the host: the host's `:org`/`inbox:changes` touring-data source
@@ -108,7 +108,7 @@ defmodule CBDashboard.Watcher do
   defp resolve_globs(:assertions) do
     # Fingerprint every registered collection's beliefs.json plus the single
     # default graph, so an edit to any collection wakes the DAG view.
-    [CB.Config.beliefs_path() | CBDashboard.Sources.Collections.belief_paths()]
+    CBDashboard.Sources.Graphs.belief_paths()
     |> Enum.uniq()
     |> Enum.filter(&File.regular?/1)
   end

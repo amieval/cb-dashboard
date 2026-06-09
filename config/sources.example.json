@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy this file to config/sources.local.json (gitignored) and list your belief graphs. Paths may be absolute or relative to this file. 'registries' are collections.json files (namespaced collections, resolved with depends_on closures); 'graphs' are standalone beliefs.json files at any path. Env overrides also work: CB_COLLECTIONS adds a registry, CB_BELIEFS adds a single graph. The viewer ships with no default — until a source is configured here (or via env), no graphs load.",
+  "registries": [
+    "../../belief-collections/collections.json"
+  ],
+  "graphs": [],
+  "_graphs_example": [
+    { "label": "my-project", "path": "/absolute/path/to/your/beliefs.json" }
+  ]
+}
