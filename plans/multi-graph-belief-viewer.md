@@ -1,6 +1,6 @@
 # Multi-Graph Belief Viewer
 
-**Status:** in progress — Phases 0–3 shipped; Phase 4 deferred
+**Status:** done — Phases 0–3 shipped; monorepo kept, no further phases
 **Repos:** cb-dashboard, belief-collections, composable-beliefs
 **Effort:** medium
 
@@ -61,9 +61,9 @@ union and renders it.
    `beliefs.json` at any path). No sources configured → nothing loads, with an
    "add a source" hint; `config/sources.example.json` documents the format; env
    shortcuts `CB_COLLECTIONS`/`CB_BELIEFS` append. The framework `CB.Collection`
-   API stays the resolution seam, so `collections.json` remains swappable per
-   Phase 4. (`collections.json` is still a staging-era map; the durable contract
-   is each `manifest.json`'s `depends_on`.)
+   API stays the resolution seam, so `collections.json` stays swappable without
+   touching the viewer. (`collections.json` is still a staging-era map; the
+   durable contract is each `manifest.json`'s `depends_on`.)
 
 2. **Discovery.** `CBDashboard.Sources.Graphs` reads the sources file and
    produces unified selectable entries: one per registry namespace
@@ -134,11 +134,12 @@ cheap.
   apply writes the target collection's `beliefs.json` and commits each touched
   file in its own repo. Pipeline extracted to `CBDashboard.ProposalApply` +
   integration tests.
-- **Phase 4 — durable resolution.** Deferred until the collections split into
-  separate repos. The sources file already abstracts locations, so this is
-  mostly rehoming `collections.json` paths to sibling checkouts behind the same
-  `CB.Collection` API — no viewer change. (No collection-split plan is written
-  yet; it's an unwritten precondition — would home in `belief-collections/plans/`.)
+**Not a planned phase — no lock-in note.** The `belief-collections` monorepo
+stays. The viewer is already indifferent to where graphs live (the sources file
+abstracts locations behind the `CB.Collection` API), so *if* collections were
+ever split into separate repos, it would only mean rehoming `collections.json`
+paths to sibling checkouts — no viewer change. There is deliberately no
+collection-split plan; it isn't scheduled work.
 
 ## Open questions
 
