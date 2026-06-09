@@ -16,80 +16,11 @@ defmodule CBDashboard.Layouts do
         <title>Composable Beliefs — Dashboard</title>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
         <script defer phx-track-static src="/assets/app.js"></script>
+        <%!-- Design tokens (:root vars) + base reset live in the shared
+              cb_ui kit so the theme can't drift across apps. App-specific
+              chrome stays in the <style> block below. --%>
+        <CBUI.Theme.tokens />
         <style>
-          :root {
-            /* Base palette. */
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --border: #30363d;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --text-muted: #6e7681;
-            --accent-blue: #58a6ff;
-            --accent-green: #3fb950;
-            --accent-orange: #d29922;
-            --accent-red: #f85149;
-            --accent-purple: #bc8cff;
-
-            /* Badge backgrounds. Dark hue tints chosen to pair with the
-               matching --accent-* foreground. Value picked from the
-               most-common literal per hue across the LiveViews. */
-            --badge-bg-green: #1b2e22;
-            --badge-bg-orange: #2e2818;
-            --badge-bg-red: #2e1818;
-            --badge-bg-purple: #2a1f33;
-            --badge-bg-blue: #1c2734;
-            --badge-bg-neutral: var(--bg-tertiary);
-
-            /* Banner backgrounds. Deeper than badge tints; used for
-               page-level status banners (plan_live status-banner). */
-            --banner-bg-success: #0f2417;
-            --banner-bg-error: #2a1414;
-
-            /* Overlays. Translucent fills layered on the base bg. Naming:
-               --overlay-<hue>-<opacity_x100>. */
-            --overlay-orange-08: rgba(210, 153, 34, 0.08);
-            --overlay-orange-12: rgba(210, 153, 34, 0.12);
-            --overlay-blue-08:   rgba(88, 166, 255, 0.08);
-            --overlay-blue-18:   rgba(88, 166, 255, 0.18);
-            --overlay-green-08:  rgba(63, 185, 80, 0.08);
-            --overlay-red-08:    rgba(248, 81, 73, 0.08);
-
-            /* Belief-type accents. dag_live filter pills colorize by
-               type; map each type onto an existing accent so the palette
-               stays small. --kind-default is the fallback for any type
-               the dashboard doesn't render specially. */
-            --kind-primitive:   var(--accent-blue);
-            --kind-compound:    var(--accent-purple);
-            --kind-implication: var(--accent-orange);
-            --kind-contract:    var(--accent-green);
-            --kind-default:     var(--text-muted);
-
-            /* Max-width tiers. Three sizes govern every content page:
-               narrow (single-column error/policy), prose (single-doc
-               reading), list (tables/listings). */
-            --maxw-narrow: 720px;
-            --maxw-prose:  880px;
-            --maxw-list:   1020px;
-          }
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-          }
-          a { color: var(--accent-blue); }
-          /* Keyboard-focus indicator for every link-styled button and
-             interactive control. Sighted keyboard users need a visible
-             focus ring; the default browser outline is suppressed by
-             several inline styles, so this rule restores one. */
-          button:focus-visible,
-          a:focus-visible {
-            outline: 2px solid var(--accent-blue);
-            outline-offset: 2px;
-          }
           .sod-header {
             padding: 14px 24px;
             border-bottom: 1px solid var(--border);

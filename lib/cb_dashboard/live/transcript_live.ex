@@ -13,7 +13,7 @@ defmodule CBDashboard.TranscriptLive do
 
   use Phoenix.LiveView
 
-  import CBDashboard.Components.UI
+  import CBUI.Components
 
   alias CBDashboard.Sources.Transcripts
 

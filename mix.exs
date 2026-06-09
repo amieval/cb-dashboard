@@ -33,6 +33,9 @@ defmodule CBDashboard.MixProject do
     [
       # The framework provides the belief layer (CB.Belief.*) + CB.JSON / CB.Config.
       {:cb, path: "../composable-beliefs"},
+      # Shared UI kit: design tokens (CBUI.Theme) + function components
+      # (CBUI.Components). Path dep so the design system can't drift across apps.
+      {:cb_ui, path: "../cb_ui"},
       {:jason, "~> 1.4"},
       {:bandit, "~> 1.0"},
       {:plug, "~> 1.0"},

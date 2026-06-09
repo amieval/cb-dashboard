@@ -8,7 +8,7 @@ defmodule CBDashboard.RunsLive do
 
   use Phoenix.LiveView
 
-  import CBDashboard.Components.UI
+  import CBUI.Components
 
   alias CBDashboard.Sources.Runs
 

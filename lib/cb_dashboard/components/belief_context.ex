@@ -26,7 +26,7 @@ defmodule CBDashboard.Components.BeliefContext do
 
   use Phoenix.Component
 
-  import CBDashboard.Components.UI
+  import CBUI.Components
 
   alias CB.Belief
   alias CB.Belief.Graph
@@ -612,7 +612,7 @@ defmodule CBDashboard.Components.BeliefContext do
   # These three wrappers preserve the original public surface
   # (type_badge / kind_badge / status_badge) so external callers
   # don't break, but their bodies are now thin shells around
-  # `<.badge>` from `CBDashboard.Components.UI`.
+  # `<.badge>` from `CBUI.Components`.
 
   attr :type, :string, required: true
 
