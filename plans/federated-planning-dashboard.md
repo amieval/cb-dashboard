@@ -6,7 +6,7 @@
 
 > **Update (2026-06):** `planning-data` has since been **emptied** — its plans
 > were homed into `composable-beliefs/plans/` and `cb-dashboard/plans/`. The
-> registry below should point at *those* repos (and a future planning-app), not
+> registry below should point at *those* repos (and a future plan-app), not
 > `planning-data`. The cross-repo case this plan solves is now the live
 > situation, not a hypothetical.
 
