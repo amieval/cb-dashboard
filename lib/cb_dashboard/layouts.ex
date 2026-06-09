@@ -16,10 +16,61 @@ defmodule CBDashboard.Layouts do
         <title>Composable Beliefs — Dashboard</title>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
         <script defer phx-track-static src="/assets/app.js"></script>
-        <%!-- Design tokens (:root vars) + base reset live in the shared
-              cb_ui kit so the theme can't drift across apps. App-specific
-              chrome stays in the <style> block below. --%>
-        <CBUI.Theme.tokens />
+        <%!-- Design tokens (:root vars) + base reset, inlined. Kept app-local
+              (no shared UI dependency) so cb-dashboard distributes standalone.
+              App-specific chrome stays in the <style> block below. --%>
+        <style>
+          :root {
+            /* Base palette. */
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-orange: #d29922;
+            --accent-red: #f85149;
+            --accent-purple: #bc8cff;
+            --badge-bg-green: #1b2e22;
+            --badge-bg-orange: #2e2818;
+            --badge-bg-red: #2e1818;
+            --badge-bg-purple: #2a1f33;
+            --badge-bg-blue: #1c2734;
+            --badge-bg-neutral: var(--bg-tertiary);
+            --banner-bg-success: #0f2417;
+            --banner-bg-error: #2a1414;
+            --overlay-orange-08: rgba(210, 153, 34, 0.08);
+            --overlay-orange-12: rgba(210, 153, 34, 0.12);
+            --overlay-blue-08: rgba(88, 166, 255, 0.08);
+            --overlay-blue-18: rgba(88, 166, 255, 0.18);
+            --overlay-green-08: rgba(63, 185, 80, 0.08);
+            --overlay-red-08: rgba(248, 81, 73, 0.08);
+            --kind-primitive: var(--accent-blue);
+            --kind-compound: var(--accent-purple);
+            --kind-implication: var(--accent-orange);
+            --kind-contract: var(--accent-green);
+            --kind-default: var(--text-muted);
+            --maxw-narrow: 720px;
+            --maxw-prose: 880px;
+            --maxw-list: 1020px;
+          }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+          }
+          a { color: var(--accent-blue); }
+          button:focus-visible,
+          a:focus-visible {
+            outline: 2px solid var(--accent-blue);
+            outline-offset: 2px;
+          }
+        </style>
         <style>
           .sod-header {
             padding: 14px 24px;

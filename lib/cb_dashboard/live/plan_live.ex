@@ -22,7 +22,7 @@ defmodule CBDashboard.PlanLive do
 
   use Phoenix.LiveView
 
-  import CBUI.Components
+  import CBDashboard.Components.UI
 
   alias CB.Belief
   alias CB.Belief.Store

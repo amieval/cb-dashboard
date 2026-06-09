@@ -12,7 +12,7 @@ defmodule CBDashboard.DagProposalsLive do
 
   use Phoenix.LiveView
 
-  import CBUI.Components
+  import CBDashboard.Components.UI
 
   alias CBDashboard.Sources.Proposals
 

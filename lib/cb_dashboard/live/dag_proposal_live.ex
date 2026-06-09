@@ -20,7 +20,7 @@ defmodule CBDashboard.DagProposalLive do
 
   use Phoenix.LiveView
 
-  import CBUI.Components
+  import CBDashboard.Components.UI
 
   alias CB.Belief.{Store, Graph}
   alias CBDashboard.Components.BeliefContext

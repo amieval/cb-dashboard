@@ -9,7 +9,7 @@ defmodule CBDashboard.PolicyLive do
 
   use Phoenix.LiveView
 
-  import CBUI.Components
+  import CBDashboard.Components.UI
 
   @impl true
   def mount(_params, _session, socket), do: {:ok, socket}

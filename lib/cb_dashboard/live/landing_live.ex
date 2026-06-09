@@ -6,7 +6,7 @@ defmodule CBDashboard.LandingLive do
 
   use Phoenix.LiveView
 
-  import CBUI.Components
+  import CBDashboard.Components.UI
 
   @impl true
   def mount(_params, _session, socket) do
