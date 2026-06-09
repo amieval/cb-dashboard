@@ -1,12 +1,21 @@
 # Split the Graph Viewer and Planning into Two Apps
 
 **Status:** planned
-**Repos:** cb-dashboard, composable-beliefs
+**Repos:** cb-dashboard, planning-app (new), composable-beliefs
 **Effort:** large
 
 > **Update (2026-06):** `planning-data` was emptied — its plans were homed into
 > `composable-beliefs/plans/` and `cb-dashboard/plans/`. The planning-app this
 > plan proposes aggregates plans from *those* repos, not `planning-data`.
+
+> **Current state of cb-dashboard (ground truth for a cold start).** The
+> multi-graph viewer work (Phases 0–3 of [[multi-graph-belief-viewer]]) is
+> shipped. So the *graph-viewer* half is already mature: `Sources.Graphs`
+> (user-owned sources file — registries + standalone graphs, no hardcoded data
+> path), `CBDashboard.ProposalApply` (collection-aware apply, extracted from the
+> LiveView), namespaced `/c/:namespace/dag` routes, and a test harness
+> (`config/test.exs`, `test/`, `.formatter.exs`). This plan's job is to carve the
+> **planning** half out from under it. Nothing in the planning surfaces changed.
 
 `cb-dashboard` today bundles two unrelated activities behind one endpoint:
 **viewing/mutating a Composable Beliefs graph** (`/dag`, proposals, policy) and
@@ -45,7 +54,7 @@ Grounded in the current modules (`lib/cb_dashboard/`):
 |---|---|---|
 | Routes | `/`, `/dag`, `/dag/:id`, `/dag/proposals`(+`/:slug`), `/policy` | `/`, `/plans`(+`/:basename`), `/position`(+`/:basename`), `/runs`, `/transcripts/:session_id` |
 | LiveViews | `DagLive`, `DagProposalsLive`, `DagProposalLive`, `PolicyLive`, graph `LandingLive` | `PlansLive`, `PlanLive`, `PositionsLive`, `PositionLive`, `RunsLive`, `TranscriptLive`, planning `LandingLive` |
-| Sources | `Proposals` | `Plans`, `Positions`, `Runs`, `Transcripts` |
+| Sources / modules | `Proposals`, `Graphs`, `ProposalApply` | `Plans`, `Positions`, `Runs`, `Transcripts` |
 | Components | `BeliefContext` | `Thread` |
 | Assets | `assertion_graph.js`, belief-card popup JS | — (markdown only) |
 | Watcher topics | `assertions`, `proposals` | `plans`, `positions`, `runs` |
@@ -88,9 +97,9 @@ Four cross-references currently bind the halves; each needs an explicit seam:
 
 Each app owns its own `Paths`/endpoint/router/supervisor:
 
-- **cb-dashboard:** `CB_BELIEFS` (the graph, via `CB.Config`) + a proposals dir.
-  No `data_root` for plans/positions/runs anymore. Multi-graph is a separate
-  effort — see the multi-graph viewer plan.
+- **cb-dashboard:** the graph **sources file** (`config :cb_dashboard,
+  :sources_file`, already implemented — registries + standalone graphs) + a
+  proposals dir. No `data_root` for plans/positions/runs anymore.
 - **planning-app:** the federated `plan_sources` registry from
   [[federated-planning-dashboard]] (config → `PLANNING_APP_PLAN_SOURCES` env),
   plus `positions_dir` / `runs_dir` / `transcripts_root`, plus
