@@ -129,7 +129,9 @@ viewer is meant to be pointed at *any* CB graph independent of planning data.
 - **Phase 3 — strip the viewer.** Remove planning routes, LiveViews, sources,
   `Thread`, and the now-dead `data_root`/`ops/plans` plumbing from cb-dashboard;
   trim its landing and Watcher to `assertions` + `proposals`. Update its README
-  to "graph viewer only."
+  to "graph viewer only." **While rewriting these files, fold in Tier 2 of
+  [[dashboard-residue-scrub]] — neutralize the remaining `louder`/`SOD`/`LouderWeb`
+  provenance refs; this is the deferred-to-re-cut moment that plan names.**
 - **Phase 4 — migrate plans to their home repos.** Now that the plan-app
   aggregates across a registry, move plans physically into the repo each is
   *about* (`cb-dashboard/plans/`, `composable-beliefs/plans/`, …), backfill
