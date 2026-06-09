@@ -1,8 +1,12 @@
 # Split the Graph Viewer and Planning into Two Apps
 
 **Status:** planned
-**Repos:** cb-dashboard, planning-data, composable-beliefs
+**Repos:** cb-dashboard, composable-beliefs
 **Effort:** large
+
+> **Update (2026-06):** `planning-data` was emptied — its plans were homed into
+> `composable-beliefs/plans/` and `cb-dashboard/plans/`. The planning-app this
+> plan proposes aggregates plans from *those* repos, not `planning-data`.
 
 `cb-dashboard` today bundles two unrelated activities behind one endpoint:
 **viewing/mutating a Composable Beliefs graph** (`/dag`, proposals, policy) and
