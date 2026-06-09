@@ -63,8 +63,9 @@ viewer work, **already shipped — do not redo**).
   `main` (no branches in play). Before editing shared files (README, provenance
   refs), confirm it has landed or work on a branch — avoid concurrent edits to
   the same files.
-- **Plan housekeeping:** when this plan completes, move it into the existing
-  convention — `plans/previous/` or `plans/deprecated/` (no `done/` subdir).
+- **Plan housekeeping:** when this plan completes, move it into `plans/done/`
+  (the status-named convention; a concurrent commit renamed `previous/` →
+  `done/`).
 
 **Phase 3 also does the Tier-2 provenance scrub** (Tier 1 is already done; see
 `dashboard-residue-scrub.md`). That plan's Tier-2 file list is **stale** (it
