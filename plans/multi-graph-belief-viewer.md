@@ -1,16 +1,22 @@
 # Multi-Graph Belief Viewer
 
-**Status:** planned
+**Status:** in progress — Phases 0–3 shipped; Phase 4 deferred
 **Repos:** cb-dashboard, belief-collections, composable-beliefs
 **Effort:** medium
 
 Generalize the viewer's `/dag` surface from **one** belief graph to **many**.
-Today `DagLive` reads a single `beliefs.json` via `CB.Config.beliefs_path()`. The
-world it should serve is a set of namespaced collections (`cb:`, `lib:`,
+The world it serves is a set of namespaced collections (`cb:`, `lib:`,
 `agent-behavior:`, `paradigm:`, `sdl:`), each its own `beliefs.json`, some
-depending on others. The viewer should discover them, let you pick one, load its
-dependency closure, and render the union — with a selector to switch between
-collections.
+depending on others — plus standalone graphs a user points at. The viewer
+discovers what the user registers, lets you pick one, loads its dependency
+closure, and renders the union — with a selector to switch between sources.
+
+> **Implemented design note.** The original plan below assumed a single
+> `:collections_registry` defaulting to `../belief-collections`. That was
+> revised during Phase 1: a general viewer must own **no path to anyone's
+> data**, so resolution now goes through a user-supplied **sources file**
+> (registries + standalone graphs) with no baked-in default. The phase log and
+> Design §1–2 below reflect the shipped design.
 
 > This plan lives in `cb-dashboard/plans/` because it is cb-dashboard's own
 > roadmap (home is physical, per [[federated-planning-dashboard]]). It concerns
@@ -47,16 +53,23 @@ union and renders it.
 
 ## Design
 
-1. **Registry config.** `config :cb_dashboard, :collections_registry` pointing at
-   `collections.json` (config → `CB_COLLECTIONS` env → default
-   `../belief-collections/collections.json`), mirroring the existing `Paths`
-   resolution pattern. `collections.json` is explicitly a staging-era resolution
-   map; the durable contract is each `manifest.json`'s `depends_on`, so keep the
-   framework API the seam and treat the registry file as swappable.
+1. **Sources, not a baked-in registry** *(shipped form)*. The viewer owns no
+   path to anyone's data. Graphs come from a user-supplied **sources file**
+   (`config :cb_dashboard, :sources_file` → `CB_DASHBOARD_SOURCES` →
+   repo-local `config/sources.local.json`, gitignored) listing **registries**
+   (`collections.json` → namespaced collections) and **standalone graphs** (any
+   `beliefs.json` at any path). No sources configured → nothing loads, with an
+   "add a source" hint; `config/sources.example.json` documents the format; env
+   shortcuts `CB_COLLECTIONS`/`CB_BELIEFS` append. The framework `CB.Collection`
+   API stays the resolution seam, so `collections.json` remains swappable per
+   Phase 4. (`collections.json` is still a staging-era map; the durable contract
+   is each `manifest.json`'s `depends_on`.)
 
-2. **Discovery.** A new `CBDashboard.Sources.Collections` (thin wrapper over the
-   framework API) lists available namespaces with their `description` and
-   `depends_on`, for the selector.
+2. **Discovery.** `CBDashboard.Sources.Graphs` reads the sources file and
+   produces unified selectable entries: one per registry namespace
+   (`kind: :collection`, with `description` via `CB.Collection`) and one per
+   standalone graph (`kind: :graph`, label slug). `registry_for/1` maps a
+   namespace back to its registry for the apply write path.
 
 3. **Selection + closure load.** Selecting namespace `N` loads
    `CB.Collection.load_union(N)` — `N` plus its dependency closure — instead of
@@ -92,8 +105,8 @@ union and renders it.
 | Area | Today | Change |
 |---|---|---|
 | framework (`composable-beliefs`) | closure/union logic buried in `cb.verify.collection` | extract to public `CB.Collection.*`; mix task calls it |
-| `CBDashboard.Paths` / config | `beliefs_path` (single) | + `collections_registry` resolution |
-| `Sources.Collections` (new) | — | list namespaces + metadata; load a namespace's union via `CB.Collection` |
+| `CBDashboard.Paths` / config | `beliefs_path` (single) | `sources_file/0` — user sources file, no default into real data |
+| `Sources.Graphs` (new) | — | multi-registry + standalone graphs; unified entries; `all` union; `registry_for/1` |
 | `DagLive` | `Store.read()` → one graph | load selected namespace's union; add collection selector; namespace in assigns/route |
 | `BeliefContext` / graph render | one flat graph | mark dependency-namespace beliefs as context vs primary |
 | `DagProposalLive` apply | one `Store` + one commit | target the proposal's declared collection; write its `beliefs.json`; commit in its repo |
@@ -105,29 +118,35 @@ cheap.
 
 ## Phasing
 
-- **Phase 0 — framework API.** Extract `CB.Collection.{registry,closure,load_union}`
-  from the mix task; repoint `cb.verify.collection` at it. No viewer change yet.
-- **Phase 1 — registry + selector.** `collections_registry` config +
-  `Sources.Collections`; collection selector in `DagLive` loading the selected
-  union; Watcher fan-out. Default still resolves to one collection if no registry
-  is configured (back-compat).
-- **Phase 2 — namespaced routing + context rendering.** Namespace in the route;
-  cross-namespace belief links; dependency beliefs rendered as context. Add the
-  "all"/global union view.
-- **Phase 3 — collection-aware proposals.** Manifest declares target collection;
-  apply writes the right `beliefs.json` and commits in the owning repo.
-- **Phase 4 — durable resolution.** When the collections split into separate
-  repos, swap the `collections.json` registry for `manifest.json`-driven
-  resolution behind the same `CB.Collection` API — no viewer change.
+- **Phase 0 — framework API.** ✅ `dc3118e`. `CB.Collection.{registry,closure,load_union}`
+  extracted from the mix task; `cb.verify.collection` delegates, output
+  byte-identical across all five collections; unit-tested.
+- **Phase 1 — sources + selector.** ✅ `c831736`, `d3d8daf`. Source picker in
+  `DagLive`; Watcher fan-out. **Revised from the original spec**: instead of a
+  single `:collections_registry` defaulting to one collection, a user-owned
+  sources file (registries + standalone graphs) with *no default into anyone's
+  data* — the viewer is general, and shows an "add a source" state when nothing
+  is configured.
+- **Phase 2 — namespaced routing + context rendering.** ✅ `7aed8f0`.
+  `/c/:namespace/dag(/:id)` (+ `?c=` back-compat); dependency-namespace beliefs
+  rendered as dashed/dimmed context; `all` global-union view.
+- **Phase 3 — collection-aware proposals.** ✅ `ee9857f`. Manifest `namespace`;
+  apply writes the target collection's `beliefs.json` and commits each touched
+  file in its own repo. Pipeline extracted to `CBDashboard.ProposalApply` +
+  integration tests.
+- **Phase 4 — durable resolution.** Deferred until the collections split into
+  separate repos. The sources file already abstracts locations, so this is
+  mostly rehoming `collections.json` paths to sibling checkouts behind the same
+  `CB.Collection` API — no viewer change. (No collection-split plan is written
+  yet; it's an unwritten precondition — would home in `belief-collections/plans/`.)
 
 ## Open questions
 
 - **Registry vs manifest as SSOT.** `collections.json` says it's temporary and
   `depends_on` is durable. Keep the framework API the seam so the viewer is
   indifferent to which backs it. Confirm the API shape with the framework owner.
-- **Route style.** Query param (`?c=`) for minimal change vs path segment
-  (`/c/:ns/...`) for clean shareable URLs. Lean path segment if multi-graph is
-  the long-term default.
+- **Route style.** ✅ Resolved (Phase 2): path segment `/c/:namespace/dag`, with
+  `?c=` honored for back-compat.
 - **"All" view scale + cycles.** Unioning every collection is fine at current
   size; the resolver is already cycle-safe. Revisit only if the global union
   grows large enough to need lazy/streamed loading.
