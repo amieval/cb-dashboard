@@ -1,10 +1,9 @@
 defmodule CBDashboard.PolicyLive do
   @moduledoc """
-  Placeholder for the deferred `/policy` view (SOD plan step 6).
+  Placeholder for the deferred `/policy` view.
 
-  The real view is blocked on DAG-side policy categorization work tracked in
-  `ops/plans/2026-05-15-dag-policy-categorization.md`. Replace this module
-  when that plan ships.
+  The real view is blocked on DAG-side policy categorization work (the
+  `dag-policy-categorization` plan). Replace this module when that ships.
   """
 
   use Phoenix.LiveView
@@ -33,16 +32,9 @@ defmodule CBDashboard.PolicyLive do
       </.empty_state>
 
       <div style="margin-top: 16px; font-size: 13px; color: var(--text-secondary);">
-        Prerequisite plan:
-        <a href="/plans/2026-05-15-dag-policy-categorization" style="font-family: ui-monospace, SFMono-Regular, monospace;">
-          2026-05-15-dag-policy-categorization.md
-        </a>
+        Prerequisite: the <code style="font-family: ui-monospace, SFMono-Regular, monospace;">dag-policy-categorization</code>
+        plan (tracked in plan-app).
       </div>
-
-      <p style="font-size: 12px; color: var(--text-muted); margin-top: 16px;">
-        The deferral is recorded in the SOD plan's status block and in
-        <a href="/plans/2026-05-16-system-observability-dashboard">the SOD plan</a> (recap appended).
-      </p>
     </div>
     """
   end

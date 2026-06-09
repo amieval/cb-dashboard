@@ -1,72 +1,65 @@
 # cb_dashboard
 
 A standalone Phoenix LiveView dashboard for **Composable Beliefs** (`cb:`) — a
-read-only observability surface over the on-disk artifacts a `cb:` workspace
-produces: the belief graph, the plans and positions that reason about it, agent
-run records, proposed graph mutations, and the Claude Code session transcripts
-behind them.
+graph viewer over the on-disk artifacts a `cb:` workspace produces: the belief
+graph itself and the proposed mutations to it.
 
 The dashboard reads these artifacts straight from the filesystem, renders them
 as linked, live-updating views, and (behind an explicit opt-in) can apply an
 approved batch of graph mutations back to disk. It has no database and no
-build-time coupling to any host application — point it at a data root and run.
+build-time coupling to any upstream application — point it at a graph and run.
+
+> The planning surfaces (plans, positions, runs, transcripts) live in the
+> separate **plan-app**; this app is the graph viewer only.
 
 ## What it shows
 
 Composable Beliefs models a body of knowledge as a graph of **assertions**
 (`org/assertions/assertions.json`): typed belief nodes with dependencies and
-citations. Around that graph sit the working artifacts a `cb:` workspace
-accumulates. Each gets a view:
+citations. Each gets a view:
 
 | Route | Surface | Backed by |
 |---|---|---|
 | `/` | Landing — section index | — |
-| `/plans` · `/plans/:basename` | Plans: status-bucketed work items, each with a body and optional session recap | `ops/plans/*.md` |
-| `/position` · `/position/:basename` | Positions: normative stances broken into per-claim assertions with DAG status | `ops/position/*.md` |
-| `/runs` | Agent runs: status, timing, steps, and alerts for automated checks | `org/agents/runs/*.json` |
 | `/dag` · `/dag/:id` | The belief graph itself — a navigable DAG with a d3 force layout, dependency/citer context per node | `CB.Config.beliefs_path()` |
+| `/c/:namespace/dag` · `/c/:namespace/dag/:id` | The same DAG scoped to a single collection (or the `all` union) | the collection's graph |
 | `/dag/proposals` · `/dag/proposals/:slug` | DAG proposals: batches of proposed mutations to the graph, reviewable per-mutation | `ops/dag-proposals/*.json` |
 | `/policy` | Policy view (deferred — pending upstream DAG policy categorization) | derived |
-| `/transcripts/:session_id` | Claude Code session transcripts rendered as a dialog trail | `~/.claude/projects/<encoded>/*.jsonl` |
 
-Each section also has a raw-file static mount (`/plans/files`, `/position/files`,
-`/runs/files`, `/dag/proposals/files`, `/transcripts/files`) that serves the
-underlying source files directly, so any rendered view links through to its
-exact on-disk source.
+The proposals view has a raw-file static mount (`/dag/proposals/files`) that
+serves the underlying manifests directly, so any rendered view links through to
+its exact on-disk source.
 
 ## How it fits together
 
-The codebase is small (~6.5k LOC) and layered so that each concern lives in one
-place:
+The codebase is small and layered so that each concern lives in one place:
 
 - **`CBDashboard.Paths`** — the single source of truth for *where* data lives.
-  Every directory (`plans_dir`, `positions_dir`, `runs_dir`, `proposals_dir`,
-  `transcripts_root`) is resolved at runtime from config → env → default, so the
-  same binary can point at any workspace. There are no compile-time path
-  literals anywhere else.
+  The proposals dir (`proposals_dir`) and the graph **sources file**
+  (`sources_file`) are resolved at runtime from config → env → default, so the
+  same binary can point at any workspace. The belief graph itself is read
+  through `CB.Config.beliefs_path/0`. There are no compile-time path literals.
 
-- **`CBDashboard.Sources.{Plans,Positions,Runs,Proposals,Transcripts}`** — pure
-  modules that read and validate one kind of artifact off disk and return
-  structured records. They hold no process state and re-read on every call;
-  at these volumes (hundreds of files at most) that keeps the cache-invalidation
-  question from ever arising. Malformed inputs are returned *with* their
-  validation errors rather than dropped, so a view can render an honest error
-  state instead of silently omitting data.
+- **`CBDashboard.Sources.{Graphs,Proposals}`** — pure modules that read and
+  validate one kind of artifact off disk and return structured records. They
+  hold no process state and re-read on every call. Malformed inputs are returned
+  *with* their validation errors rather than dropped, so a view can render an
+  honest error state instead of silently omitting data.
 
 - **`CBDashboard.Watcher`** — one GenServer that polls each source once a second,
   fingerprints it by file mtime + size, and broadcasts a per-source message on
-  `CBDashboard.PubSub` (`plans:changes`, `positions:changes`, `runs:changes`,
-  `assertions:changes`, `proposals:changes`) when it changes. Each LiveView
-  subscribes only to the topics it depends on, so editing a plan on disk
-  re-renders the plans views and nothing else.
+  `CBDashboard.PubSub` (`assertions:changes`, `proposals:changes`) when it
+  changes. Each LiveView subscribes only to the topics it depends on.
 
-- **`CBDashboard.Live.*`** — the LiveViews. They mount a source, subscribe to its
-  topic(s), and re-load on the matching PubSub message. No view talks to the
-  filesystem directly; it goes through a source.
+- **`CBDashboard.{DagLive,DagProposalsLive,DagProposalLive,PolicyLive,LandingLive}`**
+  — the LiveViews. They mount a source, subscribe to its topic(s), and re-load
+  on the matching PubSub message. No view talks to the filesystem directly; it
+  goes through a source.
 
 - **`CBDashboard.Components.*`** — shared HEEx function components, most notably
   `BeliefContext.belief_card/1`, which renders any belief with its dependency
-  and citer context and is reused across the DAG and proposal views.
+  and citer context and is reused across the DAG and proposal views, plus the
+  `UI` design-system primitives.
 
 The belief layer itself — `CB.Belief.{Store,Graph,Mutation}` and `CB.JSON` —
 comes from the `cb` framework, so reading and mutating the graph uses the same
@@ -98,13 +91,13 @@ mtime check that returns `:stale` if the file changed underfoot.
 mix deps.get          # phoenix/bandit/esbuild/mdex/...
 cd assets && npm install && cd ..   # d3, for the graph hook
 mix assets.build      # bundle assets/js/app.js -> priv/static/assets
-CB_DASHBOARD_DATA_ROOT=/path/to/workspace mix phx.server   # http://127.0.0.1:4001
+mix phx.server        # http://127.0.0.1:4001
 ```
 
-`CB_DASHBOARD_DATA_ROOT` should point at the workspace that holds `ops/plans`,
-`ops/position`, `org/agents/runs`, and `ops/dag-proposals`. It defaults to the
-current working directory, so views render empty if you start the server
-somewhere without those directories.
+Point the DAG view at a graph via the sources file (below). `CB_DASHBOARD_DATA_ROOT`
+backs only the proposals dir (`ops/dag-proposals`) and defaults to the current
+working directory, so the proposals view renders empty if you start the server
+somewhere without it.
 
 The endpoint binds to `127.0.0.1:4001` only. It ships a dev secret and
 `check_origin: false`; it is a local tool and is not meant to be exposed beyond
@@ -122,8 +115,7 @@ Everything resolves at runtime; nothing is baked in at compile time.
 | Surface | Config / env | Default |
 |---|---|---|
 | graph sources (the DAG view) | `config :cb_dashboard, :sources_file` / `CB_DASHBOARD_SOURCES` | `config/sources.local.json` (gitignored) |
-| data root (`ops/*`, `org/*`) | `config :cb_dashboard, :data_root` / `CB_DASHBOARD_DATA_ROOT` | cwd |
-| transcripts dir | `config :cb_dashboard, :transcripts_root` / `CB_DASHBOARD_TRANSCRIPTS_ROOT` | derived from `data_root` (Claude's `~/.claude/projects/<encoded>`) |
+| proposals data root | `config :cb_dashboard, :data_root` / `CB_DASHBOARD_DATA_ROOT` | cwd |
 | HTTP port | `CB_DASHBOARD_PORT` | 4001 |
 | write path (proposal apply) | `config :cb_dashboard, :enable_mutations` | `false` (read-only) |
 
@@ -150,15 +142,9 @@ and each standalone graph becomes a selectable entry in the DAG view's source
 picker (plus an `all` union). Env shortcuts append to the file: `CB_COLLECTIONS`
 adds a registry, `CB_BELIEFS` adds one graph.
 
-The transcripts directory is derived from the data root by default: Claude Code
-stores each project's transcripts under `~/.claude/projects/<encoded>`, where
-`<encoded>` is the absolute project path with `/` and `.` replaced by `-`. So
-transcripts resolve out of the box for the configured data root with no extra
-configuration.
-
 ## Dependencies
 
 The belief layer comes from `{:cb, path: "../composable-beliefs"}`. Everything
 else is the standard Phoenix stack — bandit, phoenix, phoenix_live_view,
 phoenix_html, plug, esbuild, mdex, jason — plus d3 (via npm) for the DAG graph
-hook. There is no coupling to any host application.
+hook. There is no coupling to any upstream application.

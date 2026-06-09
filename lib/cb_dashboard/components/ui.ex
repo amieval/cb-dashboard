@@ -149,13 +149,12 @@ defmodule CBDashboard.Components.UI do
 
   Recognized schemes (per c040):
 
-  - `session:<id>` → `/plans/<id>` (session ids correspond to plan
-    basenames in this project).
   - `https:<rest>` → external `https:<rest>` URL.
 
-  Other schemes (gmail, user, document, source) render as plain text
-  for now — `gmail:` needs a Gmail thread URL builder, `document:` and
-  `source:` need filesystem viewers SOD doesn't yet have.
+  Other schemes (session, gmail, user, document, source) render as plain
+  text. The viewer doesn't host the planning surfaces, so `session:` plan
+  references aren't linked here; `gmail:` would need a thread URL builder,
+  and `document:`/`source:` need filesystem viewers the viewer doesn't have.
   """
   attr :artifact, :string, required: true
 
@@ -177,7 +176,6 @@ defmodule CBDashboard.Components.UI do
     end
   end
 
-  defp parse_artifact("session:" <> id) when id != "", do: {:link, "/plans/#{id}"}
   defp parse_artifact("https:" <> _ = url), do: {:link, url}
   defp parse_artifact(_), do: :plain
 
@@ -293,33 +291,6 @@ defmodule CBDashboard.Components.UI do
         {render_slot(row)}
       </li>
     </ul>
-    """
-  end
-
-  # --- Bucket section (promoted from plans_live) ---------------------------
-
-  @doc """
-  Collapsible status-bucket wrapper used by the `/plans` index. Renders
-  a `<details>` with an accent-colored border and an uppercase summary;
-  body is the slot content. Promoted from `PlansLive`'s prior private
-  definition with the same signature.
-  """
-  attr :label, :string, required: true
-  attr :count, :integer, required: true
-  attr :accent, :string, required: true
-  attr :open, :boolean, default: false
-  slot :inner_block, required: true
-
-  def bucket_section(assigns) do
-    ~H"""
-    <details open={@open} style={"margin-bottom: 16px; border: 1px solid #{@accent}; border-radius: 6px; padding: 0 16px;"}>
-      <summary style={"cursor: pointer; padding: 12px 0; font-size: 12px; font-weight: 600; color: #{@accent}; text-transform: uppercase; letter-spacing: 0.05em;"}>
-        {@label} ({@count})
-      </summary>
-      <div style="padding-bottom: 12px;">
-        {render_slot(@inner_block)}
-      </div>
-    </details>
     """
   end
 end

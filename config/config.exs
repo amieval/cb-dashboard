@@ -23,9 +23,4 @@ config :cb_dashboard, CBDashboard.Endpoint,
 
 config :phoenix, :json_library, Jason
 
-# Map the `.jsonl` extension (Claude Code session transcripts) to text/plain so
-# the `/transcripts/files` static mount renders them inline in the browser
-# instead of forcing a download. `txt` is preserved alongside the default.
-config :mime, :types, %{"text/plain" => ["txt", "jsonl"]}
-
 import_config "#{config_env()}.exs"

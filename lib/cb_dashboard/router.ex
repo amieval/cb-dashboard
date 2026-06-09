@@ -1,11 +1,11 @@
 defmodule CBDashboard.Router do
   @moduledoc """
-  Routes for the Composable Beliefs dashboard.
+  Routes for the Composable Beliefs dashboard — the graph viewer.
 
-  Full observability surface: landing, plans, positions, runs, the belief DAG,
-  DAG proposals (mutations), policies, and transcripts. `/dag/proposals` and
-  `/dag/proposals/:slug` are declared before `/dag/:id` so the literal proposal
-  routes win over the `:id` wildcard.
+  Surface: landing, the belief DAG, DAG proposals (mutations), and policies.
+  `/dag/proposals` and `/dag/proposals/:slug` are declared before `/dag/:id` so
+  the literal proposal routes win over the `:id` wildcard. The planning surfaces
+  (plans/positions/runs/transcripts) live in the separate plan-app.
   """
 
   use Phoenix.Router
@@ -26,11 +26,6 @@ defmodule CBDashboard.Router do
     pipe_through :browser
 
     live "/", LandingLive, :index
-    live "/plans", PlansLive, :index
-    live "/plans/:basename", PlanLive, :show
-    live "/position", PositionsLive, :index
-    live "/position/:basename", PositionLive, :show
-    live "/runs", RunsLive, :index
     live "/dag", DagLive, :index
     live "/dag/proposals", DagProposalsLive, :index
     live "/dag/proposals/:slug", DagProposalLive, :show
@@ -41,6 +36,5 @@ defmodule CBDashboard.Router do
     live "/c/:namespace/dag", DagLive, :index
     live "/c/:namespace/dag/:id", DagLive, :show
     live "/policy", PolicyLive, :index
-    live "/transcripts/:session_id", TranscriptLive, :show
   end
 end

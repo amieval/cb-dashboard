@@ -300,10 +300,7 @@ defmodule CBDashboard.DagProposalLive do
           <%= if @manifest.source_plan do %>
             <span>·</span>
             <span>source plan:
-              <a
-                href={source_plan_link(@manifest.source_plan)}
-                style="font-family: ui-monospace, SFMono-Regular, monospace; color: var(--accent-blue);"
-              >{@manifest.source_plan}</a>
+              <span style="font-family: ui-monospace, SFMono-Regular, monospace; color: var(--text-secondary);">{@manifest.source_plan}</span>
             </span>
           <% end %>
         </:meta>
@@ -581,13 +578,4 @@ defmodule CBDashboard.DagProposalLive do
 
   defp date_label(%Date{} = d), do: Date.to_iso8601(d)
   defp date_label(_), do: "undated"
-
-  defp source_plan_link(rel) when is_binary(rel) do
-    basename =
-      rel
-      |> Path.basename()
-      |> Path.rootname()
-
-    "/plans/#{basename}"
-  end
 end

@@ -1,7 +1,7 @@
 defmodule CBDashboard.ErrorHTML do
   @moduledoc """
-  Minimal error view (replaces the borrowed `LouderWeb.ErrorHTML`).
-  Renders the bare status message - e.g. "Not Found", "Internal Server Error".
+  Minimal error view. Renders the bare status message - e.g. "Not Found",
+  "Internal Server Error".
   """
   use Phoenix.Component
 

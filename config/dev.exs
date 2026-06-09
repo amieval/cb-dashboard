@@ -1,8 +1,8 @@
 import Config
 
 config :cb_dashboard, CBDashboard.Endpoint,
-  # Port defaults to 4001 (the SOD's canonical port); override via CB_DASHBOARD_PORT
-  # so the dashboard can run beside the still-live louder SOD during the cutover.
+  # Port defaults to 4001; override via CB_DASHBOARD_PORT (e.g. to run beside
+  # plan-app on 4002).
   http: [
     ip: {127, 0, 0, 1},
     port: String.to_integer(System.get_env("CB_DASHBOARD_PORT") || "4001")

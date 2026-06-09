@@ -11,8 +11,16 @@
 > **Out of scope — not a domain leak:** the `ops/*` data root (`ops/plans`,
 > `ops/position`) is a generic host *layout convention*, not a touring leak;
 > changing it is architectural and is owned by [[split-graph-and-plan-app]], not
-> this scrub. **Tier 2** (host-app provenance — `louder`/`SOD`/`LouderWeb`)
-> remains *deferred* per the recommendation below.
+> this scrub.
+>
+> **Status (2026-06): Tier 2 done too.** Folded into [[split-graph-and-plan-app]]
+> Phase 3 (the viewer re-cut) per its plan. All `louder`/`SOD`/`LouderWeb`
+> provenance neutralized in first-party `lib/` + `config/`: the `.sod-*` CSS
+> class names renamed to `.app-*` (real code, not just comments), and the
+> doc/comment refs in `paths.ex`, `error_html.ex`, `endpoint.ex`, `ui.ex`,
+> `layouts.ex`, `landing_live.ex`, `policy_live.ex`, `config/dev.exs` replaced
+> with neutral phrasing ("the upstream app"). `grep -rniE "louder|\bsod\b|sod-|LouderWeb" lib/ config/`
+> is now empty.
 
 `cb-dashboard` was extracted from a frozen host app (`louder`, an "SOD" observability
 surface). The code decoupled cleanly (see `dashboard-extraction.md`), but **prose

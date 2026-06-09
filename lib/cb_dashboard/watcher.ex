@@ -11,11 +11,11 @@ defmodule CBDashboard.Watcher do
 
   | Topic                  | Message                | Source                                   |
   |------------------------|------------------------|------------------------------------------|
-  | `"plans:changes"`      | `:plans_changed`       | `Paths.plans_dir/*.md`                   |
-  | `"positions:changes"`  | `:positions_changed`   | `Paths.positions_dir/*.md`               |
-  | `"runs:changes"`       | `:runs_changed`        | `Paths.runs_dir/*.json`                  |
   | `"assertions:changes"` | `:assertions_changed`  | every graph in `Sources.Graphs.belief_paths/0` |
   | `"proposals:changes"`  | `:proposals_changed`   | `Paths.proposals_dir/*.json`             |
+
+  The planning topics (plans/positions/runs) moved to plan-app along with their
+  surfaces.
 
   Decoupled from the upstream app: an upstream domain-data source and the legacy
   SSE `:refresh` back-compat (which served the old client-facing surface) are
@@ -31,9 +31,6 @@ defmodule CBDashboard.Watcher do
   # Source -> {topic, message_atom}. Glob/path is resolved per-source in
   # `resolve_globs/1` so every read goes through the configurable data root.
   @sources %{
-    plans: {"plans:changes", :plans_changed},
-    positions: {"positions:changes", :positions_changed},
-    runs: {"runs:changes", :runs_changed},
     assertions: {"assertions:changes", :assertions_changed},
     proposals: {"proposals:changes", :proposals_changed}
   }
@@ -91,18 +88,6 @@ defmodule CBDashboard.Watcher do
     |> resolve_globs()
     |> Enum.map(&stat/1)
     |> Enum.reject(&is_nil/1)
-  end
-
-  defp resolve_globs(:plans) do
-    Paths.plans_dir() |> Path.join("*.md") |> Path.wildcard()
-  end
-
-  defp resolve_globs(:positions) do
-    Paths.positions_dir() |> Path.join("*.md") |> Path.wildcard()
-  end
-
-  defp resolve_globs(:runs) do
-    Paths.runs_dir() |> Path.join("*.json") |> Path.wildcard()
   end
 
   defp resolve_globs(:assertions) do
