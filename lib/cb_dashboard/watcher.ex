@@ -17,9 +17,9 @@ defmodule CBDashboard.Watcher do
   | `"assertions:changes"` | `:assertions_changed`  | every graph in `Sources.Graphs.belief_paths/0` |
   | `"proposals:changes"`  | `:proposals_changed`   | `Paths.proposals_dir/*.json`             |
 
-  Decoupled from the host: the host's `:org`/`inbox:changes` touring-data source
-  and the legacy SSE `:refresh` back-compat (which served the old client-facing
-  surface) are dropped — no dashboard view consumes them.
+  Decoupled from the upstream app: an upstream domain-data source and the legacy
+  SSE `:refresh` back-compat (which served the old client-facing surface) are
+  dropped — no dashboard view consumes them.
   """
 
   use GenServer

@@ -1,5 +1,19 @@
 # Dashboard Extraction Residue — Scrub
 
+> **Status (2026-06): Tier 1 done.** Three first-party domain leaks neutralized:
+> the `README.md` line (already resolved by the standalone-README rewrite), the
+> `watcher.ex` moduledoc comment, and the `**Tag:**` example in
+> `sources/plans.ex` (was `advancing | flights | lodging` — literal tour-
+> management vocabulary, the residue [[federated-planning-dashboard]] flagged).
+> No `touring` / `:org` / `inbox:changes` / tour-tag residue remains in
+> first-party code.
+>
+> **Out of scope — not a domain leak:** the `ops/*` data root (`ops/plans`,
+> `ops/position`) is a generic host *layout convention*, not a touring leak;
+> changing it is architectural and is owned by [[split-graph-and-plan-app]], not
+> this scrub. **Tier 2** (host-app provenance — `louder`/`SOD`/`LouderWeb`)
+> remains *deferred* per the recommendation below.
+
 `cb-dashboard` was extracted from a frozen host app (`louder`, an "SOD" observability
 surface). The code decoupled cleanly (see `dashboard-extraction.md`), but **prose
 breadcrumbs of the host survived the cut** — in particular a reference to the host's

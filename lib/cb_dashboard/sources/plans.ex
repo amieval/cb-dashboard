@@ -19,7 +19,7 @@ defmodule CBDashboard.Sources.Plans do
       **Status:** pending | in-progress | paused (YYYY-MM-DD)
                   | done (YYYY-MM-DD) | superseded (YYYY-MM-DD)
                   | deprecated (YYYY-MM-DD) | evaluation needed
-      **Tag:** advancing | flights | lodging | ... (one of the controlled vocabulary)
+      **Tag:** <category from the controlled vocabulary in the plans SSOT>
       **Effort:** small | medium | large
   """
 
