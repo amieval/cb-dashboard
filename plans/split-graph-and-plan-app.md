@@ -1,7 +1,8 @@
 # Split the Graph Viewer and Planning into Two Apps
 
-**Status:** ready — **start at Phase 1** (no shared kernel; cb-dashboard self-contained)
-**Repos:** cb-dashboard, plan-app (new, its own repo), composable-beliefs
+**Status:** done (2026-06) — all four phases shipped; cb-dashboard is the
+graph viewer only, plan-app is the federated planning client (its own repo)
+**Repos:** cb-dashboard, plan-app, composable-beliefs
 **Effort:** large
 
 > **Update (2026-06):** `planning-data` was emptied — its plans were homed into
@@ -173,10 +174,14 @@ viewer is meant to be pointed at *any* CB graph independent of planning data.
 
 ## Phasing
 
+> **All phases done (2026-06).** Phase 1 `5e5dc52`, Phase 2 `bf1fbc3` (plan-app
+> repo); Phase 3 `bdc23ad`, Phase 4 (this commit) (cb-dashboard repo). Nothing
+> pushed — the user controls pushes and plan-app remote creation.
+
 - **Phase 0 — ~~shared kernel~~ (dropped).** A `cb_ui` shared library was
   extracted then reverted: no shared UI dep. cb-dashboard is self-contained
   (`94568f0`). The UI is **copied**, not shared — see the Execution brief.
-- **Phase 1 — scaffold plan-app.** New Phoenix app **in its own sibling repo
+- ✅ **Phase 1 — scaffold plan-app.** New Phoenix app **in its own sibling repo
   `amieval/plan-app`** (`git init`, no remote): endpoint, router,
   application/supervisor, esbuild pipeline, its own `.formatter.exs` +
   `config/test.exs`, depending on `{:cb, path: "../composable-beliefs"}` only.
@@ -184,7 +189,7 @@ viewer is meant to be pointed at *any* CB graph independent of planning data.
   tokens block into plan-app's own root layout. Boots empty on its own port
   (pick one ≠ 4001, e.g.
   4002). Settle the `graph_viewer_url` config shape here.
-- **Phase 2 — move planning surfaces, federated from the start.** Relocate
+- ✅ **Phase 2 — move planning surfaces, federated from the start.** Relocate
   `Positions`/`Runs`/`Transcripts` sources, their LiveViews, and `Thread` into
   plan-app on a single `data_root`. Build the **plans** surface directly
   against the federated `plan_sources` registry from
@@ -193,19 +198,35 @@ viewer is meant to be pointed at *any* CB graph independent of planning data.
   dirs, repo selector in `PlansLive`. The plan-app's plans surface is
   multi-repo on day one; there is no single-root interim. Convert belief-ID and
   proposal references to deep links via `graph_viewer_url`.
-- **Phase 3 — strip the viewer.** Remove planning routes, LiveViews, sources,
+- ✅ **Phase 3 — strip the viewer.** Remove planning routes, LiveViews, sources,
   `Thread`, and the now-dead `data_root`/`ops/plans` plumbing from cb-dashboard;
   trim its landing and Watcher to `assertions` + `proposals`. Update its README
   to "graph viewer only." **While rewriting these files, fold in Tier 2 of
   [[dashboard-residue-scrub]] — neutralize the remaining `louder`/`SOD`/`LouderWeb`
   provenance refs; this is the deferred-to-re-cut moment that plan names.**
-- **Phase 4 — migrate plans to their home repos.** Now that the plan-app
+- ✅ **Phase 4 — migrate plans to their home repos.** Now that the plan-app
   aggregates across a registry, move plans physically into the repo each is
   *about* (`cb-dashboard/plans/`, `composable-beliefs/plans/`, …), backfill
   `**Repos:**` only on cross-cutting plans, and resolve cross-repo link identity
   (`(source, basename)`, not basename alone) per [[federated-planning-dashboard]]
   §Migration. This is data movement, not code — the durable end state where every
   plan lives beside the code it describes.
+  - **Outcome:** the physical migration was already done when `planning-data`
+    was emptied — every active plan already sits in the repo it's about, so no
+    file moves were needed. Fixed the `**Repos:**` value on this plan (a
+    parenthetical comma broke the comma-parser → `cb-dashboard, plan-app,
+    composable-beliefs`). Confirmed no basename collisions across sources and
+    recorded the `(source, basename)` link-identity decision in
+    [[federated-planning-dashboard]] §Decisions.
+  - **Follow-up surfaced (not done):** the repos archive completed plans into
+    `done/` / `superseded/` / `deprecated/` **subdirs**, but plan-app's
+    `Sources.Plans` walks only top-level `plans/*.md` and buckets by the
+    `**Status:**` header. So terminal plans in subdirs (and this plan, once
+    archived to `done/`) don't appear in plan-app — its "Done" bucket stays
+    empty for these repos. Reconcile by either (a) flattening to the
+    Status-header convention [[federated-planning-dashboard]] specifies, or
+    (b) teaching plan-app to walk one subdir level. A convention decision, out
+    of this phase's "data, not code" scope.
 
 ## Open questions
 
@@ -213,9 +234,10 @@ viewer is meant to be pointed at *any* CB graph independent of planning data.
   `amieval/plan-app` (alongside `cb-dashboard`), per "the tool is not the data."
 - **Shared UI library?** ✅ **Resolved: no.** cb-dashboard stays self-contained
   for distribution; each app copies the UI and may drift.
-- **Proposal `source_plan` back-reference.** Proposals point at a plan basename;
-  cross-app this is a link from the viewer *into* plan-app. Decide whether
-  the viewer also needs a `plan_app_url` for that reverse link, or whether
-  the reference stays one-directional (planning → viewer only).
+- **Proposal `source_plan` back-reference.** ✅ **Resolved (Phase 3):**
+  one-directional. The viewer renders `source_plan` (and `session:` belief
+  artifacts) as **plain text**, not a link into plan-app — no `plan_app_url`
+  introduced. plan-app → viewer deep links stay the only cross-app link
+  direction. Revisit if a viewer→plan-app jump is ever wanted.
 - **Shared `cb` version skew.** Both apps path-dep `composable-beliefs`. Fine
   while co-located; revisit if either is ever released independently.

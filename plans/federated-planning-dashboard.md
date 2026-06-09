@@ -150,8 +150,14 @@ every call (no cache), so fan-out across a handful of repos stays cheap.
 - **Front-matter vs header field.** This plan picks extending the existing
   `**Field:**` header (one parser, one SSOT). If a richer metadata story emerges
   later, YAML front-matter is the migration target — but not now.
-- **Cross-repo plan links.** `plan_links.ex` keys on basename; cross-repo means
-  basenames can collide. Decide on `(source, basename)` identity before backfill.
+- **Cross-repo plan links.** ✅ **Resolved (2026-06, app-split Phase 4):**
+  basenames are globally unique by the dated/slug convention; verified no
+  collisions across the registered sources. plan-app keys plan links on
+  basename and resolves with deterministic **first-match across registry
+  order** (`Sources.Plans.find/1`, `status_meta/1`). `(source, basename)` is
+  the *conceptual* identity and the migration target if a collision ever
+  appears — at which point the `/plans/:basename` route gains a source segment
+  (`/plans/:source/:basename`). Not needed while basenames stay unique.
 
 ## Phasing
 
