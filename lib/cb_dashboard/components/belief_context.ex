@@ -259,7 +259,7 @@ defmodule CBDashboard.Components.BeliefContext do
   @doc """
   Render a belief's `rules` array as a numbered list. Used by belief_card
   (between metadata and deps) and by DagLive's sidebar so any view that
-  surfaces a contract-grade implication shows its actual rule payload.
+  surfaces a contract-grade directive shows its actual rule payload.
   Each rule runs through `linkify_belief_ids` so cross-references inside
   rule text stay traversable.
   """

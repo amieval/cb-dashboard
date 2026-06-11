@@ -458,6 +458,7 @@ defmodule CBDashboard.DagLive do
             <.filter_button active={@filters.status == nil} click="filter_status" value="all" label="All" />
             <.filter_button active={@filters.status == "superseded"} click="filter_status" value="superseded" label="Superseded" />
             <.filter_button active={@filters.status == "retracted"} click="filter_status" value="retracted" label="Retracted" />
+            <.filter_button active={@filters.status == "retired"} click="filter_status" value="retired" label="Retired" />
           </div>
         </div>
 
@@ -526,7 +527,7 @@ defmodule CBDashboard.DagLive do
           <%= @selected.claim %>
         </p>
 
-        <%!-- Rules (contract-grade implications: c038/c039/c040/c041/c013 etc.) --%>
+        <%!-- Rules (contract-grade directives: the c05x schema family etc.) --%>
         <BeliefContext.rules_block belief={@selected} compact={true} />
 
         <%!-- Invariants --%>
@@ -550,8 +551,10 @@ defmodule CBDashboard.DagLive do
           <div style="margin-bottom: 4px;"><.section_label>Materialized</.section_label></div>
           <div style="font-size: 12px; color: var(--accent-green);">
             <%= @selected.materialized["date"] %>
+            <span :if={@selected.materialized["plan"]}> · <%= @selected.materialized["plan"] %></span>
+            <span :if={@selected.materialized["last_verified"]}> · verified <%= @selected.materialized["last_verified"] %></span>
             <div :for={todo <- @selected.materialized["todos"] || []} style="margin-top: 4px; padding: 4px 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 11px; color: var(--text-secondary);">
-              <strong><%= todo["object"] %></strong>: <%= todo["action"] %>
+              <strong><%= todo["id"] || todo["object"] %></strong>: <%= todo["action"] %><span :if={todo["result"]}> — <%= todo["result"] %></span>
             </div>
           </div>
         </div>
@@ -648,5 +651,6 @@ defmodule CBDashboard.DagLive do
   defp status_color("active"), do: "var(--accent-green)"
   defp status_color("superseded"), do: "var(--accent-orange)"
   defp status_color("retracted"), do: "var(--accent-red)"
+  defp status_color("retired"), do: "var(--text-secondary)"
   defp status_color(_), do: "var(--text-secondary)"
 end

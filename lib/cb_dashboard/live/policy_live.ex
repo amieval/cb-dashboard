@@ -26,7 +26,7 @@ defmodule CBDashboard.PolicyLive do
       <.empty_state tone={:deferred} title="What's missing">
         <ul style="font-size: 13px; line-height: 1.7; padding-left: 18px; color: var(--text-primary);">
           <li><code>kind: "policy"</code> is applied to 18 beliefs without a defined inclusion principle.</li>
-          <li>The <code>implication:</code> field leaks onto 43 <code>type: "compound"</code> nodes — schema contamination.</li>
+          <li>The legacy <code>implication:</code> field once leaked onto compound nodes — the schema has since deleted the field; the categorization question it masked remains.</li>
           <li>The <code>*-policy</code> tag convention is used on only 2 nodes — half-formed.</li>
         </ul>
       </.empty_state>

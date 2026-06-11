@@ -50,7 +50,6 @@ defmodule CBDashboard.Layouts do
             --overlay-red-08: rgba(248, 81, 73, 0.08);
             --kind-primitive: var(--accent-blue);
             --kind-compound: var(--accent-purple);
-            --kind-implication: var(--accent-orange);
             --kind-inference: #39c5cf;
             --kind-directive: var(--accent-orange);
             --kind-contract: var(--accent-green);
