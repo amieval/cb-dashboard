@@ -421,7 +421,8 @@ defmodule CBDashboard.DagLive do
             <.filter_button active={@filters.type == nil} click="filter_type" value="" label="All" />
             <.filter_button active={@filters.type == "primitive"} click="filter_type" value="primitive" label="Primitive" color="var(--kind-primitive)" />
             <.filter_button active={@filters.type == "compound"} click="filter_type" value="compound" label="Compound" color="var(--kind-compound)" />
-            <.filter_button active={@filters.type == "implication"} click="filter_type" value="implication" label="Implication" color="var(--kind-implication)" />
+            <.filter_button active={@filters.type == "inference"} click="filter_type" value="inference" label="Inference" color="var(--kind-inference)" />
+            <.filter_button active={@filters.type == "directive"} click="filter_type" value="directive" label="Directive" color="var(--kind-directive)" />
           </div>
         </div>
 
@@ -473,8 +474,12 @@ defmodule CBDashboard.DagLive do
               <span style="color: var(--kind-compound);"><%= @stats.by_type["compound"] || 0 %></span>
             </div>
             <div style="display: flex; justify-content: space-between;">
-              <span>Implications</span>
-              <span style="color: var(--kind-implication);"><%= @stats.by_type["implication"] || 0 %></span>
+              <span>Inferences</span>
+              <span style="color: var(--kind-inference);"><%= @stats.by_type["inference"] || 0 %></span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span>Directives</span>
+              <span style="color: var(--kind-directive);"><%= @stats.by_type["directive"] || 0 %></span>
             </div>
             <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 4px; margin-top: 4px;">
               <span>Stale</span>
@@ -482,7 +487,7 @@ defmodule CBDashboard.DagLive do
             </div>
             <div style="display: flex; justify-content: space-between;">
               <span>Unlinked</span>
-              <span style="color: var(--accent-orange);"><%= @stats.unlinked_implications %></span>
+              <span style="color: var(--accent-orange);"><%= @stats.unlinked_directives %></span>
             </div>
           </div>
         </div>
@@ -636,7 +641,8 @@ defmodule CBDashboard.DagLive do
 
   defp type_color("primitive"), do: "var(--kind-primitive)"
   defp type_color("compound"), do: "var(--kind-compound)"
-  defp type_color("implication"), do: "var(--kind-implication)"
+  defp type_color("inference"), do: "var(--kind-inference)"
+  defp type_color("directive"), do: "var(--kind-directive)"
   defp type_color(_), do: "var(--text-secondary)"
 
   defp status_color("active"), do: "var(--accent-green)"

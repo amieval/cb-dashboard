@@ -640,7 +640,8 @@ defmodule CBDashboard.Components.BeliefContext do
 
   def type_color("primitive"), do: "var(--accent-blue)"
   def type_color("compound"), do: "var(--accent-green)"
-  def type_color("implication"), do: "var(--accent-orange)"
+  def type_color("inference"), do: "var(--kind-inference)"
+  def type_color("directive"), do: "var(--accent-orange)"
   def type_color(_), do: "var(--text-secondary)"
 
   def status_color("active"), do: "var(--accent-green)"
@@ -652,7 +653,8 @@ defmodule CBDashboard.Components.BeliefContext do
   # Tone mapping used by the type_badge / status_badge wrappers.
   defp tone_for_type("primitive"), do: :blue
   defp tone_for_type("compound"), do: :green
-  defp tone_for_type("implication"), do: :orange
+  defp tone_for_type("inference"), do: :blue
+  defp tone_for_type("directive"), do: :orange
   defp tone_for_type(_), do: :neutral
 
   defp tone_for_status("active"), do: :green
@@ -676,7 +678,8 @@ defmodule CBDashboard.Components.BeliefContext do
 
   defp citer_relationship(%{contract: true}), do: "derivation"
   defp citer_relationship(%{type: "compound"}), do: "composition"
-  defp citer_relationship(%{type: "implication"}), do: "action-derivation"
+  defp citer_relationship(%{type: "inference"}), do: "derivation"
+  defp citer_relationship(%{type: "directive"}), do: "action-derivation"
   defp citer_relationship(_), do: "deps"
 
   defp changed_fields(nil), do: []

@@ -51,6 +51,8 @@ defmodule CBDashboard.Layouts do
             --kind-primitive: var(--accent-blue);
             --kind-compound: var(--accent-purple);
             --kind-implication: var(--accent-orange);
+            --kind-inference: #39c5cf;
+            --kind-directive: var(--accent-orange);
             --kind-contract: var(--accent-green);
             --kind-default: var(--text-muted);
             --maxw-narrow: 720px;
